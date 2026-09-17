@@ -1,0 +1,215 @@
+A single instance for the Order Picking problem is composed of 4 different
+files (the second file is not strictly necessary to describe the instance, but
+we have added it for further information):
+
+1) warehouse_8_1_3_1560: A file containing the warehouse layout and graph representation
+2) productsDB_1560_list: A file containing the list of 1560 products, including name and category
+3) productsDB_1560_locations: A file containing a map of products to warehouse locations
+4) Several files with customer orders
+
+Below we describe each one of these files. We also provide a script in PERL
+that generates different warehouse layouts. The script is called:
+
+warehouseGenerator.pl
+
+Inside this file, the user can set parameters for the desired warehouse layouts.
+Simply run the script (as "perl warehouseGenerator.pl") and a file containing
+details for the desired warehouse will be created - similar to warehouse_8_1_1560.
+
+The perl file includes comments to explain each of the parameters.
+
+-----------------------------
+1) warehouse_8_1_3_1560: A file containing the warehouse layout and graph representation
+
+The warehouse layout file is not only numeric, it contains text information in order to 
+clarify the meaning of each parameter. This specific file was generated for a warehouse
+with 8 aisles, 1 extra cross-aisle (so 3 cross-aisles in total), two shelves and 
+able to hold at least 1560 products.
+
+There are two distinct sets of points in warehouse layouts:
+
+ - The locations, or slots (where products are placed).
+ - The vertices in the warehouse graph representation.
+
+Vertices are referred to as:
+ a) origin (or source) - that is vertex 0, 
+ b) product vertices, which are vertices from where products can be picked, 
+ c) artificial vertices, from where no products are picked. 
+ 
+A product vertex is located in the middle of an aisle and from it the picker can collect 
+products placed on both sides of the aisle, in any shelf.
+
+Within the file there are several fields, a description of each one of them is given below:
+
+---
+Under INPUT_PARAMETERS:
+ - numAisles: 8 - Number of aisles
+
+ - numExtraCrossAisles: 1  - Every warehouse is assumed to have one cross-aisle in
+   the top and one in the bottom. This parameter is the number of extra
+   cross-aisles (located in the middle of the warehouse).
+
+ - numShelves: 3 - Number of shelves stacked vertically.
+
+ - minimumProductsRequired: 1560 - The number of locations in each aisle
+   side/shelf is chosen such that the warehouse holds at least this
+   amount of products.
+
+The next parameters are related to the standard walking distances in a warehouse. 
+All lenghts are given in standardised units. The lengths are: aisleWidth, 
+rackDepth, locationWidth, crossAisleWidth, sourceToFirstCrossAisle.
+
+ - The distance between two consecutive product vertices in the same subaisle
+   is given by [ locationWidth ]
+ - The distance between an artificial vertex and the closest product vertex
+   (either north or south is given by [ (locationWidth + crossAisleWidth) / 2 ]
+ - The horizontal distance between two consecutive artificial vertices is
+   given by [ aisleWidth + 2 * rackDepth ]
+ - The distance from the origin to the first artificial vertex (the one
+   closest to the source) is given by
+   [ sourceToFirstCrossAisle + crossAisleWidth / 2) ]
+ - The distances from the origin to the remaining artificial vertices are given
+   by (considering remaining artificial vertices are numbered a = 2, ..., N):
+   [ sqrt ( (sourceToFirstCrossAisle + crossAisleWidth/2)^2 
+          + ((a-1) * (aisleWidth + 2 * rackDepth))       ^2) ]
+
+The matrix of distances is also given in this file (description below), so there is no need to
+calculate the distances based on the formulas above.
+
+---
+Under DATA, the following parameters are found:
+
+ - numLocationsPerAisleSide: 33 - Number of locations in each shelf, in each aisle
+   side. In this case, 33 was computed such that the warehouse can hold at
+   least 1560 items, while having 8 aisles and 3 shelves
+
+ - totalLocations: 1584 - Total number of locations which can hold products (given by
+   numAisles * 2 sides * numLocationsPerAisleSide * numShelves).
+
+ - totalVertices: 289 - Number of vertices in the graph, including the origin, every
+   product vertex and every artificial vertex.
+
+ - numProductVertices: 264 - Number of product vertices. Each product vertex
+   picks products in each aisle side, in each shelf. So, in this case, every
+   product vertex picks products in 6 different locations (2 aisle sides * 3
+   shelves).
+
+ - numArtificialVertices: 24 - Number of artificial vertices, given by aisles
+   * number of cross-aisles
+
+ - crossAislesPositions: 0 16 32 - Position of each cross-aisle. Assuming
+   there are 33 locations per aisle side, then locations range from 0 to 32.
+   In this example, as there are 3 cross-aisles in total, the cross-aisles 
+   positions will be "0 16 32". 0 is the first, 32 is the last and 16 is placed 
+   in the middle. This way, locations 0 to 16 are in the north block and locations 
+   17 to 32 are in the south block. Position 16 and 32 mean that the cross-aisle 
+   comes immediatelly after the positions in aisle side 16 and 32. Note that 
+   logically the first cross-aisle should be in position -1, but as an exception 
+   to the rule we put it in position 0.
+
+---
+Under all_locations_X_aislePos_Y_aisleSide_Z_shelf, we show, for each location
+that can store a product (before each location there is a 0 for the source)
+
+locationIndex positionInAisleSide aisleSide shelf
+
+Each aisle has two aisle sides. In the example here (8 aisles, 3 shelves and 33
+positions per aisle):
+
+ - positionInAisleSide ranges from 0 to 32
+
+ - aisleSide ranges from 0 to 15 (8 aisles, 2 per aisle)
+ 
+ - shelf ranges from 0 to 2 (0 being the bottom shelf, 2 being the top shelf)
+
+
+---
+position_product_vertices_X_aislePos_Y_aisle
+
+The positions of product vertices are given in two dimensions only, as
+vertices pick products in any shelf. Also, vertices are in the middle of
+aisles, so aisle sides do not matter. For each product vertex (from 1 to
+numProductVertices) we give:
+
+productVertexIndex positionInAisle aisle 
+
+For the same example above (8 aisles and 33 positions per aisle):
+ - productVertexIndex ranges from 1 to 264 (0 is not included as it is the
+   source). 264 is obtained by doing aisles * numLocationsPerAisleSide.
+ - positionInAisle ranges from 0 to 32.
+ - aisle ranges from 0 to 7.
+
+---
+vertices_pick_which_locations
+
+This is a map from the graph representation to the locations (slots) where 
+products are placed. For each vertex, the list of locations from where a picker 
+can pick a product is given. If we have 33 locations per aisle side, 8 aisles and
+3 cross-aisles, there are 289 vertices:
+ - 0: origin, or source
+ - 1 to 264: product vertices
+ - 265 to 288: artificial vertices (24 = aisles * cross-aisles)
+
+There are also 1584 locations (slots: 8 aisles * 2 sides * 3 shelves * 33
+locations per aisle side). Each one of the 264 product vertices pick 6
+different locations (1584 / 264 = 6).
+
+---
+arcs_distances
+
+This is the actual graph in sparse representation. Vertices range from 0 to
+numVertices-1 (in this case, 0 to 288), for each vertex we find:
+
+vertexIndex numberOfArcs arc1 distanceArc1 arc2 distanceArc2 etc...
+
+The origin (vertex 0) is connected to every artificial vertex in the first 
+cross-aisle, so the number of arcs from the source is the number of aisles.
+
+Every artificial vertex is connected to at least 2 and at most 4 neighbours.
+
+Every product vertex is connected to exactly 2 neighbours.
+
+-----------------------------
+2) productsDB_1560_list: A file containing the list of 1560 products, including name and categories
+
+It contains:
+
+Number of products
+Header
+Product 1
+Product 2
+etc.
+
+-----------------------------
+3) productsDB_1560_locations: A file containing a map of products to warehouse locations
+
+Note that as the warehouse holds 1584 locations and there are 1560 products,
+some locations will be empty.
+
+The file contains:
+
+Number of products
+Header
+productIndex locationIndex
+
+locationIndex ranges from 1 to 1584
+
+
+-----------------------------
+4) Several files with customer orders
+
+Files are named: instances_dXX_ordYY
+
+XX are the number of days merged together to produce larger
+orders, and YY are the number of orders in the file. Each file contains:
+
+Number of orders
+Header
+Order 1
+Order 2
+etc.
+
+Each row containing an order has:
+NumberOfProducts productIndex1 amountOfProduct1 productIndex2 amountOfProduct2 etc...
+
+

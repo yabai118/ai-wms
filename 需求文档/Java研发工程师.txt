@@ -1,0 +1,21 @@
+Java研发工程师
+职位描述
+
+岗位职责：
+1、完成软件系统代码的实现，编写代码注释和开发文档；
+2、辅助进行系统的功能定义,程序设计；
+3、根据设计文档或需求说明完成代码编写，调试，测试和维护；
+4、分析并解决软件开发过程中的问题；
+5、协助测试工程师制定测试计划，定位发现的问题；
+6、配合项目经理完成相关任务目标。
+
+岗位要求：
+1、本科以上学历，专业不限；
+2、熟悉计算机基本知识，掌握数据结构、算法、操作系统原理相关知识；
+3、了解J2EE技术；熟悉JSP/JavaBean/Servlet/ HTML技术的WEB开发；
+4、熟悉HTTP协议及W3C相关互联网规范，掌握Javascript、CSS页面技术；
+5、掌握Oracle、MySQL等数据库开发技术；
+6、熟悉Hibernate，Spring，SpringMVC，IBatis等至少二种WEB框架；
+7、至少熟悉一种前端框架如 JQuery，Vue，RectJS，AngularJS
+8、熟悉 spring boot，spring cloud ,mq ,redis 
+9、了解软件工程概念和软件开发流程，能够使用SVN，Git，maven等项目管理工具。
