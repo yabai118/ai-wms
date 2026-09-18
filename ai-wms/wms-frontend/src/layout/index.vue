@@ -69,7 +69,9 @@ const route = useRoute()
 /** 菜单配置（后续新页面往这里加） */
 const menus = [
   { path: '/dashboard', title: '首页看板', icon: 'DataBoard' },
-  { path: '/product', title: '商品管理', icon: 'Goods' }
+  { path: '/product', title: '商品管理', icon: 'Goods' },
+  { path: '/location', title: '库位管理', icon: 'Grid' },
+  { path: '/location-map', title: '库位地图', icon: 'MapLocation' }
 ]
 
 const activeMenu = computed(() => route.path)

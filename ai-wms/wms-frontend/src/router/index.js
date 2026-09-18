@@ -24,6 +24,18 @@ const routes = [
         name: 'Product',
         component: () => import('@/views/ProductList.vue'),
         meta: { title: '商品管理', icon: 'Goods' }
+      },
+      {
+        path: 'location',
+        name: 'Location',
+        component: () => import('@/views/LocationList.vue'),
+        meta: { title: '库位管理', icon: 'Grid' }
+      },
+      {
+        path: 'location-map',
+        name: 'LocationMap',
+        component: () => import('@/views/LocationMap.vue'),
+        meta: { title: '库位地图', icon: 'MapLocation' }
       }
     ]
   }
