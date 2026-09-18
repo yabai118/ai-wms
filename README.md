@@ -146,15 +146,20 @@ WHERE sku_id = #{skuId}
 ### 一键启动（Windows）
 
 ```bash
-# 1. 初始化数据库
-mysql -u root -p < ai-wms/sql/01_schema.sql
-mysql -u root -p < ai-wms/sql/02_init_base.sql
-mysql -u root -p < ai-wms/sql/03_init_outbound.sql
-mysql -u root -p < ai-wms/sql/04_init_inventory.sql
+# 1. 初始化数据库（得到干净的空系统）
+mysql -u root -p < ai-wms/sql/schema.sql
 
 # 2. 启动三个服务
 start-all.bat
 ```
+
+启动后访问 http://localhost:5173
+
+> **想让系统跑起来有数据？** 两个办法：
+> ① 通过系统的「**数据导入**」页面上传 Excel（商品 / 库位 / 期初库存）——这是真实 WMS 的上线流程
+> ② 或者跑 `ai-wms/sql/generator/` 下的脚本批量生成初始化 SQL（用于验证算法）
+>
+> 详见 [ai-wms/sql/README.md](ai-wms/sql/README.md)
 
 ### 手动启动
 
@@ -192,8 +197,11 @@ job2/
     ├── ER设计.md           19 张表设计
     ├── 数据模块文档.md      数据来源、处理、真实性标注
     ├── 并发压测报告.md      ★ 压测结果
-    ├── data/               数据集（含字段说明）
-    ├── sql/                建表 + 数据生成 + 分析工具
+    ├── data/               数据集（含字段说明与初始化数据）
+    ├── sql/
+    │   ├── schema.sql      建表（跑完 → 干净空系统）★
+    │   ├── generator/      数据生成脚本
+    │   └── tools/          分析 / 核对 / 压测工具
     ├── wms-backend/        Java 后端
     ├── wms-agent/          Python Agent
     └── wms-frontend/       Vue3 前端
@@ -220,6 +228,7 @@ job2/
 | 页面 | 说明 |
 |---|---|
 | 首页看板 | 6 个 KPI + 4 个图表（订单趋势 / ABC 分布 / 库区分布 / 库存 TOP10） |
+| **数据导入** | 商品 / 库位 / 期初库存 Excel 导入（含模板下载、逐行校验、错误明细） |
 | 商品管理 | 208 款商品 + 尺码详情 |
 | 库位管理 | 2,314 个库位（含坐标、占用率） |
 | **库位地图** | 仓库分布可视化（真实坐标） |
