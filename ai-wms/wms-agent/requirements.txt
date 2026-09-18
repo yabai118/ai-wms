@@ -1,0 +1,19 @@
+# Web 框架
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+
+# 数据模型与校验
+pydantic==2.10.4
+pydantic-settings==2.7.0
+
+# HTTP 客户端（调用 Java 业务系统）
+httpx==0.28.1
+requests==2.32.3
+
+# 数据库（直连 MySQL 读取数据）
+PyMySQL==1.1.1
+SQLAlchemy==2.0.36
+
+# 算法与数据处理
+numpy==2.3.4
+pandas==2.3.3
