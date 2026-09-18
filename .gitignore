@@ -86,3 +86,9 @@ ai-wms/sql/02_init_base.sql
 ai-wms/sql/03_init_outbound.sql
 ai-wms/sql/04_init_inventory.sql
 ai-wms/sql/*.sql.bak
+
+# ---------- 不上传（个人过程文档，非项目本体）----------
+# 只上传 ai-wms/（项目本体）和 README.md
+开发过程文档/
+知识库/
+需求文档/

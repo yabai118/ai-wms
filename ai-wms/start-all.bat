@@ -30,7 +30,7 @@ if errorlevel 1 (
 REM ---------- 启动 Java 后端 ----------
 echo.
 echo [2/5] 启动 Java 后端（8080）...
-start "WMS-Backend" cmd /k "cd /d %~dp0ai-wms\wms-backend && mvn spring-boot:run"
+start "WMS-Backend" cmd /k "cd /d %~dp0wms-backend && mvn spring-boot:run"
 
 echo       等待后端启动（约 40 秒）...
 timeout /t 40 /nobreak >nul
@@ -45,7 +45,7 @@ if errorlevel 1 (
 REM ---------- 启动 Python Agent ----------
 echo.
 echo [3/5] 启动 Python Agent（8000）...
-start "WMS-Agent" cmd /k "cd /d %~dp0ai-wms\wms-agent && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000"
+start "WMS-Agent" cmd /k "cd /d %~dp0wms-agent && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000"
 
 echo       等待 Agent 启动（约 8 秒）...
 timeout /t 8 /nobreak >nul
@@ -60,7 +60,7 @@ if errorlevel 1 (
 REM ---------- 启动前端 ----------
 echo.
 echo [4/5] 启动前端（5173）...
-start "WMS-Frontend" cmd /k "cd /d %~dp0ai-wms\wms-frontend && npm run dev"
+start "WMS-Frontend" cmd /k "cd /d %~dp0wms-frontend && npm run dev"
 
 echo       等待前端启动（约 8 秒）...
 timeout /t 8 /nobreak >nul
