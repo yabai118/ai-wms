@@ -21,3 +21,11 @@ export const outboundApi = {
     return request.get(`/outbound-orders/${id}/allocations`)
   }
 }
+
+/** 导出订单（浏览器直接下载） */
+export function exportOrdersUrl(params) {
+  const qs = new URLSearchParams(
+    Object.entries(params || {}).filter(([, v]) => v !== null && v !== undefined && v !== '')
+  ).toString()
+  return `/api/export/orders${qs ? '?' + qs : ''}`
+}

@@ -36,3 +36,8 @@ export const waveApi = {
     return request.get(`/waves/${id}/distance`)
   }
 }
+
+/** 导出拣货单（浏览器直接下载） */
+export function exportPickTasksUrl(waveId) {
+  return `/api/export/wave/${waveId}/tasks`
+}

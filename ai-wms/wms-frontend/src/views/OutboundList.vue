@@ -23,6 +23,9 @@
         </el-select>
         <el-button type="primary" @click="handleSearch"><el-icon><Search /></el-icon> 查询</el-button>
         <el-button @click="handleReset"><el-icon><Refresh /></el-icon> 重置</el-button>
+        <el-button type="success" plain @click="doExport">
+          <el-icon><Download /></el-icon> 导出 Excel
+        </el-button>
       </div>
 
       <!-- 表格 -->
@@ -116,7 +119,7 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { outboundApi } from '@/api/outbound'
+import { outboundApi, exportOrdersUrl } from '@/api/outbound'
 
 const loading = ref(false)
 const list = ref([])
@@ -146,6 +149,10 @@ async function loadData() {
 
 function handleSearch() { query.pageNum = 1; loadData() }
 function handleReset() { query.orderNo = ''; query.status = null; query.pageNum = 1; loadData() }
+
+function doExport() {
+  window.open(exportOrdersUrl({ ...query, pageNum: null, pageSize: null }), '_blank')
+}
 
 async function showDetail(row) {
   detail.value = await outboundApi.detail(row.id)

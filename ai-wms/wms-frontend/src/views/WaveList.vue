@@ -88,7 +88,15 @@
     </el-card>
 
     <!-- ============ 详情弹窗 ============ -->
-    <el-dialog v-model="detailVisible" title="波次详情" width="960px">
+    <el-dialog v-model="detailVisible" width="960px">
+      <template #header>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding-right:30px">
+          <span style="font-weight:600">波次详情</span>
+          <el-button size="small" type="success" plain @click="exportPickList">
+            <el-icon><Download /></el-icon> 导出拣货单
+          </el-button>
+        </div>
+      </template>
       <el-descriptions :column="4" border size="small" style="margin-bottom:14px">
         <el-descriptions-item label="波次号">{{ detail.waveNo }}</el-descriptions-item>
         <el-descriptions-item label="状态">
@@ -161,7 +169,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { waveApi } from '@/api/wave'
+import { waveApi, exportPickTasksUrl } from '@/api/wave'
 import { outboundApi } from '@/api/outbound'
 
 const loading = ref(false)
@@ -203,6 +211,11 @@ function handleReset() { query.waveNo = ''; query.status = null; query.pageNum =
 async function showDetail(row) {
   detail.value = await waveApi.detail(row.id)
   detailVisible.value = true
+}
+
+/** 导出拣货单——实际仓库会打印出来给拣货员用 */
+function exportPickList() {
+  window.open(exportPickTasksUrl(detail.value.id), '_blank')
 }
 
 // ---------- 拣货 ----------

@@ -37,6 +37,9 @@
             <el-checkbox v-model="query.onlyAllocated" @change="handleSearch">仅有已分配</el-checkbox>
             <el-button type="primary" @click="handleSearch"><el-icon><Search /></el-icon> 查询</el-button>
             <el-button @click="handleReset"><el-icon><Refresh /></el-icon> 重置</el-button>
+            <el-button type="success" plain @click="doExport">
+              <el-icon><Download /></el-icon> 导出 Excel
+            </el-button>
           </div>
 
           <el-table :data="list" v-loading="loading" border stripe size="small">
@@ -175,7 +178,7 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox, ElNotification } from 'element-plus'
-import { inventoryApi } from '@/api/inventory'
+import { inventoryApi, exportInventoryUrl } from '@/api/inventory'
 
 const activeTab = ref('stock')
 const loading = ref(false)
@@ -240,6 +243,11 @@ function onTabChange(name) {
 }
 
 function handleSearch() { query.pageNum = 1; loadData() }
+
+/** 按当前筛选条件导出（筛选条件与列表一致） */
+function doExport() {
+  window.open(exportInventoryUrl({ ...query, pageNum: null, pageSize: null }), '_blank')
+}
 function handleReset() {
   query.skuCode = ''; query.locationCode = ''
   query.onlyAvailable = false; query.onlyAllocated = false

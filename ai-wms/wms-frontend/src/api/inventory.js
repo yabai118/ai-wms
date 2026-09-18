@@ -31,3 +31,11 @@ export const inventoryApi = {
     return request.post(`/inventory/${id}/unfreeze`, null, { params: { qty } })
   }
 }
+
+/** 导出库存（浏览器直接下载） */
+export function exportInventoryUrl(params) {
+  const qs = new URLSearchParams(
+    Object.entries(params || {}).filter(([, v]) => v !== null && v !== undefined && v !== '')
+  ).toString()
+  return `/api/export/inventory${qs ? '?' + qs : ''}`
+}
