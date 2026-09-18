@@ -13,12 +13,19 @@ export default defineConfig({
   server: {
     port: 5173,
     open: false,
-    // 代理：前端 /api/**  ->  后端 http://localhost:8080/api/**
-    // 这样前端不用管跨域，也方便部署时统一改地址
+    // 两个后端服务的代理：
+    //   /api    -> Java 业务服务（8080）
+    //   /agent  -> Python Agent 服务（8000）
+    // 前端不用管跨域，部署时也只需改这里
     proxy: {
       '/api': {
         target: 'http://localhost:8080',
         changeOrigin: true
+      },
+      '/agent': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/agent/, '')
       }
     }
   }

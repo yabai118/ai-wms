@@ -60,6 +60,12 @@ const routes = [
         name: 'Inventory',
         component: () => import('@/views/InventoryList.vue'),
         meta: { title: '库存管理', icon: 'Coin' }
+      },
+      {
+        path: 'routing',
+        name: 'Routing',
+        component: () => import('@/views/RoutingView.vue'),
+        meta: { title: '路径优化', icon: 'Guide' }
       }
     ]
   }
