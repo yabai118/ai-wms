@@ -16,8 +16,8 @@ import numpy as np
 import os
 import subprocess
 
-DATA = '../data/footwear'
-OUT = '03_init_outbound.sql'
+DATA = '../../data/footwear'
+OUT = '../../data/footwear/init-data/02_outbound.sql'
 MYSQL = ['mysql', '-u', 'root', '-p123456', '--default-character-set=utf8mb4',
          '-N', '-B', '-e']
 

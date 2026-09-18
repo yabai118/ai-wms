@@ -19,8 +19,8 @@ import subprocess
 random.seed(42)
 np.random.seed(42)
 
-DATA = '../data/footwear'
-OUT = '04_init_inventory.sql'
+DATA = '../../data/footwear'
+OUT = '../../data/footwear/init-data/03_inventory.sql'
 MYSQL = ['mysql', '-u', 'root', '-p123456', '--default-character-set=utf8mb4',
          '-N', '-B', '-e']
 

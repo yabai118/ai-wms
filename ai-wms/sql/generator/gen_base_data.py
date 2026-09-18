@@ -12,8 +12,8 @@ import pandas as pd
 import numpy as np
 import os
 
-DATA = '../data/footwear'
-OUT = '02_init_base.sql'
+DATA = '../../data/footwear'
+OUT = '../../data/footwear/init-data/01_base.sql'
 
 # 波次用到、但 Storage_Location.csv 里没有的库位（坐标按编码规律推断）
 MISSING_LOCS = {
