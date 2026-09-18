@@ -48,6 +48,12 @@ const routes = [
         name: 'Outbound',
         component: () => import('@/views/OutboundList.vue'),
         meta: { title: '出库管理', icon: 'Upload' }
+      },
+      {
+        path: 'wave',
+        name: 'Wave',
+        component: () => import('@/views/WaveList.vue'),
+        meta: { title: '波次拣货', icon: 'Van' }
       }
     ]
   }
