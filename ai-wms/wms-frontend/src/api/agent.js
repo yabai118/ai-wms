@@ -55,6 +55,11 @@ export const agentApi = {
     return agent.post('/orchestrate', { taskType, payload })
   },
 
+  /** ★ 编排器运行统计（监控面板用） */
+  orchestrateStats() {
+    return agent.get('/orchestrate/stats')
+  },
+
   // ---------- LLM Agent ----------
   /** LLM 是否可用 */
   llmStatus() {

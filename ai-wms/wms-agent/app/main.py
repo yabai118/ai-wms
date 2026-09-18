@@ -192,6 +192,20 @@ def orchestrate_types():
     ]
 
 
+@app.get("/orchestrate/stats", summary="★ 编排器运行统计（供监控面板用）")
+def orchestrate_stats():
+    """
+    编排器运行状况统计
+
+    核心指标是**降级率**——它证明三级降级设计是「真在跑、可观测」的：
+        降级率 = 降级次数 / 总调用次数
+
+    注：统计保存在内存中，服务重启后清空。
+    生产环境应该把这些指标打到 Prometheus / 日志系统。
+    """
+    return orchestrator.stats()
+
+
 def _serialize_result(r):
     """把内部结果对象转成可序列化的字典"""
     if r is None:

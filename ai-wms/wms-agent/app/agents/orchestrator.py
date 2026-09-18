@@ -42,8 +42,9 @@ from __future__ import annotations
 import logging
 import time
 import uuid
+from collections import deque
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Deque, Dict, List, Optional
 
 from app.services import fallback, routing
 
@@ -188,6 +189,8 @@ class Orchestrator:
     def __init__(self, timeout_ms: int = DEFAULT_TIMEOUT_MS):
         self.timeout_ms = timeout_ms
         self.handlers: Dict[str, Handler] = {}
+        # 最近 200 条调用记录（内存，服务重启后清空——生产环境应写日志/监控系统）
+        self._records: Deque[Dict[str, Any]] = deque(maxlen=200)
         self._register_default_handlers()
 
     # ------------------------------------------------------------------
@@ -230,12 +233,14 @@ class Orchestrator:
         handler = self.handlers.get(req.task_type)
         if handler is None:
             trace.append(f"未知任务类型: {req.task_type}")
-            return TaskResult(
+            r = TaskResult(
                 task_id=task_id, task_type=req.task_type, status="FAILED",
                 handler="none", result=None,
                 fallback_reason=f"未知任务类型 {req.task_type}",
                 elapsed_ms=int((time.time() - started) * 1000), trace=trace,
             )
+            self._record(r, req)
+            return r
 
         # ② 组装上下文
         ctx = Context(req.payload)
@@ -258,10 +263,12 @@ class Orchestrator:
                                      f"执行超时（{elapsed}ms）")
 
             logger.info("[%s] 任务成功: %dms", task_id, elapsed)
-            return TaskResult(
+            r = TaskResult(
                 task_id=task_id, task_type=req.task_type, status="SUCCESS",
                 handler=handler.name, result=result, elapsed_ms=elapsed, trace=trace,
             )
+            self._record(r, req)
+            return r
 
         except ValidationError as e:
             trace.append(f"结果校验失败: {e}")
@@ -281,7 +288,7 @@ class Orchestrator:
             fb_result = handler.fallback(ctx)
             trace.append(f"规则桩执行完成: {reason}")
             logger.info("[%s] 已降级为规则桩: %s", task_id, reason)
-            return TaskResult(
+            r = TaskResult(
                 task_id=task_id, task_type=req.task_type, status="DEGRADED",
                 handler=f"{handler.name}(fallback)", result=fb_result,
                 fallback_reason=reason,
@@ -291,12 +298,82 @@ class Orchestrator:
             # ③ 规则桩也失败 → 人工工单
             trace.append(f"规则桩也失败: {e}")
             logger.error("[%s] 规则桩失败，需人工处理: %s", task_id, e)
-            return TaskResult(
+            r = TaskResult(
                 task_id=task_id, task_type=req.task_type, status="FAILED",
                 handler="none", result=None,
                 fallback_reason=f"算法与规则桩均失败，已生成人工工单（{reason}）",
                 elapsed_ms=int((time.time() - started) * 1000), trace=trace,
             )
+        self._record(r, req)
+        return r
+
+    # ------------------------------------------------------------------
+    #  ③ 调用记录与统计（供监控面板使用）
+    # ------------------------------------------------------------------
+    def _record(self, result: TaskResult, req: TaskRequest):
+        """记录一次调用（内存保留最近 200 条）"""
+        self._records.append({
+            "taskId": result.task_id,
+            "taskType": result.task_type,
+            "status": result.status,
+            "handler": result.handler,
+            "elapsedMs": result.elapsed_ms,
+            "fallbackReason": result.fallback_reason,
+            "calledAt": time.strftime("%Y-%m-%d %H:%M:%S"),
+        })
+
+    def stats(self) -> Dict[str, Any]:
+        """
+        统计编排器的运行状况
+
+        重点指标是**降级率**——它证明降级设计是"真在跑、可观测"的：
+            降级率 = 降级次数 / 总调用次数
+        """
+        records = list(self._records)
+        total = len(records)
+
+        if total == 0:
+            return {
+                "total": 0, "success": 0, "degraded": 0, "failed": 0,
+                "degradeRate": 0.0, "successRate": 0.0,
+                "avgElapsedMs": 0, "byType": {}, "recent": [],
+            }
+
+        success = sum(1 for r in records if r["status"] == "SUCCESS")
+        degraded = sum(1 for r in records if r["status"] == "DEGRADED")
+        failed = sum(1 for r in records if r["status"] == "FAILED")
+
+        # 按任务类型分组统计
+        by_type: Dict[str, Dict[str, Any]] = {}
+        for r in records:
+            t = r["taskType"]
+            d = by_type.setdefault(t, {"count": 0, "success": 0, "degraded": 0,
+                                       "failed": 0, "totalMs": 0})
+            d["count"] += 1
+            d["totalMs"] += r["elapsedMs"]
+            if r["status"] == "SUCCESS":
+                d["success"] += 1
+            elif r["status"] == "DEGRADED":
+                d["degraded"] += 1
+            else:
+                d["failed"] += 1
+
+        for t, d in by_type.items():
+            d["avgMs"] = round(d["totalMs"] / d["count"]) if d["count"] else 0
+            d["successRate"] = round(100 * d["success"] / d["count"], 1) if d["count"] else 0.0
+            del d["totalMs"]
+
+        return {
+            "total": total,
+            "success": success,
+            "degraded": degraded,
+            "failed": failed,
+            "successRate": round(100 * success / total, 1),
+            "degradeRate": round(100 * degraded / total, 1),
+            "avgElapsedMs": round(sum(r["elapsedMs"] for r in records) / total),
+            "byType": by_type,
+            "recent": list(reversed(records[-20:])),      # 最近 20 条，新的在前
+        }
 
     # ------------------------------------------------------------------
     #  具体处理器的「算法」实现
