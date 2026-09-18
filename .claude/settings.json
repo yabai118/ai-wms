@@ -1,7 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(timeout 300 mvn -q clean compile -DskipTests)"
-    ]
-  }
-}
