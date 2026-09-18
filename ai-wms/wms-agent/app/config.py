@@ -19,6 +19,12 @@ class Settings(BaseSettings):
     db_password: str = "123456"
     db_name: str = "ai_wms"
 
+    # ---- LLM（可选，未配置时自动降级为规则桩） ----
+    # 支持任何 OpenAI 兼容接口：通义千问 / DeepSeek / 智谱 等
+    llm_api_key: str = ""
+    llm_base_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    llm_model: str = "qwen-plus"
+
     @property
     def db_url(self) -> str:
         return (f"mysql+pymysql://{self.db_user}:{self.db_password}"

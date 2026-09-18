@@ -14,13 +14,19 @@ from typing import List
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import Field
 
+from app.agents import llm
+from app.agents.orchestrator import Orchestrator, TaskRequest
 from app.config import settings
 from app.clients.db import load_wave_tasks, get_wave_info
 from app.models.schemas import (
-    CompareOut, HealthOut, OptimizeIn, RouteOut, TaskOut,
+    CamelModel, CompareOut, HealthOut, OptimizeIn, RouteOut, TaskOut,
 )
 from app.services import routing
+
+# 编排器实例（全局单例）
+orchestrator = Orchestrator()
 
 app = FastAPI(
     title=settings.app_name,
@@ -139,6 +145,107 @@ def strategies():
         }.get(k, k)}
         for k in routing.STRATEGIES
     ]
+
+
+# =====================================================================
+#  编排器接口（任务路由 + 结果校验 + 三级降级）
+# =====================================================================
+
+class OrchestrateIn(CamelModel):
+    """编排任务请求"""
+    task_type: str = Field(description="任务类型：routing / forecast / anomaly")
+    payload: dict = Field(default_factory=dict, description="任务参数")
+
+
+@app.post("/orchestrate", summary="提交任务给编排器（自动路由 + 校验 + 降级）")
+def orchestrate(body: OrchestrateIn):
+    """
+    编排器入口
+
+    编排器会：
+    1. 按 taskType 路由到对应处理器
+    2. 组装上下文
+    3. 执行算法并**校验结果**
+    4. 失败/超时/结果不合法 → **降级到规则桩**
+    5. 规则桩也失败 → 标记为需人工处理
+    """
+    result = orchestrator.execute(TaskRequest(body.task_type, body.payload))
+    return {
+        "taskId": result.task_id,
+        "taskType": result.task_type,
+        "status": result.status,
+        "statusName": result.status_name,
+        "handler": result.handler,
+        "result": _serialize_result(result.result),
+        "fallbackReason": result.fallback_reason,
+        "elapsedMs": result.elapsed_ms,
+        "trace": result.trace,
+    }
+
+
+@app.get("/orchestrate/types", summary="列出编排器支持的任务类型")
+def orchestrate_types():
+    return [
+        {"type": "routing", "name": "拣货路径优化", "payload": {"waveId": 9709, "strategy": "s_shape"}},
+        {"type": "forecast", "name": "需求预测", "payload": {"history": [10, 12, 15, 11], "horizon": 7}},
+        {"type": "anomaly", "name": "异常检测", "payload": {"records": [{"value": 10}, {"value": 12}]}},
+    ]
+
+
+def _serialize_result(r):
+    """把内部结果对象转成可序列化的字典"""
+    if r is None:
+        return None
+    if hasattr(r, "strategy") and hasattr(r, "total_distance"):
+        return to_route_out(r).model_dump(by_alias=True)
+    return r
+
+
+# =====================================================================
+#  LLM Agent 接口
+# =====================================================================
+
+class AnomalyExplainIn(CamelModel):
+    anomaly_type: str = Field(description="异常类型，如 PICK_TIMEOUT")
+    detail: dict = Field(default_factory=dict, description="异常详情")
+
+
+class NlQueryIn(CamelModel):
+    question: str = Field(description="用自然语言提问")
+
+
+@app.get("/llm/status", summary="LLM 是否可用")
+def llm_status():
+    return {
+        "available": llm.is_available(),
+        "model": settings.llm_model if llm.is_available() else None,
+        "baseUrl": settings.llm_base_url if llm.is_available() else None,
+        "note": "未配置 LLM_API_KEY 时，异常解释会自动降级为预置文案",
+    }
+
+
+@app.post("/llm/explain-anomaly", summary="用 LLM 生成异常诊断建议")
+def llm_explain(body: AnomalyExplainIn):
+    suggestion = llm.explain_anomaly(body.anomaly_type, body.detail)
+    return {
+        "anomalyType": body.anomaly_type,
+        "suggestion": suggestion,
+        "source": "LLM" if llm.is_available() else "规则桩",
+    }
+
+
+@app.post("/llm/query", summary="自然语言查询（Function Calling）")
+def llm_query(body: NlQueryIn):
+    """
+    自然语言查询：LLM 理解意图 → 调用工具查库 → 组织回答
+
+    试试这些问题：
+      - 仓库现在有多少库存？
+      - 8N10W9-11 这个 SKU 分布在哪些库位？
+      - 哪些拣货员作业量最少？
+      - 有哪些商品库存偏低了？
+    """
+    return llm.natural_language_query(body.question)
 
 
 # =====================================================================
