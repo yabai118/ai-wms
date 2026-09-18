@@ -14,18 +14,20 @@ export default defineConfig({
     port: 5173,
     open: false,
     // 两个后端服务的代理：
-    //   /api    -> Java 业务服务（8080）
-    //   /agent  -> Python Agent 服务（8000）
-    // 前端不用管跨域，部署时也只需改这里
+    //   /api        -> Java 业务服务（8080）
+    //   /agent-api  -> Python Agent 服务（8000）
+    //
+    // ⚠️ 注意：Python 服务的代理前缀**不能叫 /agent**，
+    // 因为前端有个页面路由也叫 /agent，会被代理规则拦截，导致页面 404。
     proxy: {
       '/api': {
         target: 'http://localhost:8080',
         changeOrigin: true
       },
-      '/agent': {
+      '/agent-api': {
         target: 'http://localhost:8000',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/agent/, '')
+        rewrite: (path) => path.replace(/^\/agent-api/, '')
       }
     }
   }

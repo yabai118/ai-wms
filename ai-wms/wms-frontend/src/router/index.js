@@ -66,6 +66,12 @@ const routes = [
         name: 'Routing',
         component: () => import('@/views/RoutingView.vue'),
         meta: { title: '路径优化', icon: 'Guide' }
+      },
+      {
+        path: 'agent',
+        name: 'Agent',
+        component: () => import('@/views/AgentView.vue'),
+        meta: { title: '智能助手', icon: 'MagicStick' }
       }
     ]
   }

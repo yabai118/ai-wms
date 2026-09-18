@@ -76,7 +76,8 @@ const menus = [
   { path: '/outbound', title: '出库管理', icon: 'Upload' },
   { path: '/wave', title: '波次拣货', icon: 'Van' },
   { path: '/inventory', title: '库存管理', icon: 'Coin' },
-  { path: '/routing', title: '路径优化', icon: 'Guide' }
+  { path: '/routing', title: '路径优化', icon: 'Guide' },
+  { path: '/agent', title: '智能助手', icon: 'MagicStick' }
 ]
 
 const activeMenu = computed(() => route.path)

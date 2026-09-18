@@ -4,11 +4,13 @@ import { ElMessage } from 'element-plus'
 /**
  * Python Agent 服务客户端
  *
- * 走 vite 代理 /agent -> http://localhost:8000
- * 响应结构和 Java 服务一致（{code, message, data} 风格的简化版）
+ * 走 vite 代理 /agent-api -> http://localhost:8000
+ *
+ * ⚠️ 前缀是 /agent-api 不是 /agent——
+ * 因为前端页面路由也叫 /agent，用 /agent 做代理前缀会拦截页面请求。
  */
 const agent = axios.create({
-  baseURL: '/agent',
+  baseURL: '/agent-api',
   timeout: 30000
 })
 
@@ -40,5 +42,32 @@ export const agentApi = {
   /** 按指定策略优化给定任务 */
   optimize(tasks, strategy) {
     return agent.post('/routing/optimize', { tasks, strategy })
+  },
+
+  // ---------- 编排器 ----------
+  /** 列出编排器支持的任务类型 */
+  orchestrateTypes() {
+    return agent.get('/orchestrate/types')
+  },
+
+  /** 提交任务给编排器（自动路由 + 校验 + 降级） */
+  orchestrate(taskType, payload) {
+    return agent.post('/orchestrate', { taskType, payload })
+  },
+
+  // ---------- LLM Agent ----------
+  /** LLM 是否可用 */
+  llmStatus() {
+    return agent.get('/llm/status')
+  },
+
+  /** 自然语言查询（Function Calling） */
+  nlQuery(question) {
+    return agent.post('/llm/query', { question })
+  },
+
+  /** LLM 异常解释 */
+  explainAnomaly(anomalyType, detail) {
+    return agent.post('/llm/explain-anomaly', { anomalyType, detail })
   }
 }
