@@ -72,7 +72,8 @@ const menus = [
   { path: '/product', title: '商品管理', icon: 'Goods' },
   { path: '/location', title: '库位管理', icon: 'Grid' },
   { path: '/location-map', title: '库位地图', icon: 'MapLocation' },
-  { path: '/inbound', title: '入库管理', icon: 'Download' }
+  { path: '/inbound', title: '入库管理', icon: 'Download' },
+  { path: '/outbound', title: '出库管理', icon: 'Upload' }
 ]
 
 const activeMenu = computed(() => route.path)

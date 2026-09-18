@@ -42,6 +42,12 @@ const routes = [
         name: 'Inbound',
         component: () => import('@/views/InboundList.vue'),
         meta: { title: '入库管理', icon: 'Download' }
+      },
+      {
+        path: 'outbound',
+        name: 'Outbound',
+        component: () => import('@/views/OutboundList.vue'),
+        meta: { title: '出库管理', icon: 'Upload' }
       }
     ]
   }
