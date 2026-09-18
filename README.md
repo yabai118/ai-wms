@@ -44,10 +44,10 @@
 
 | 层 | 技术 |
 |---|---|
-| **Java 后端** | Spring Boot 3.2 + MyBatis-Plus + MySQL 8 + Redis |
-| **Python Agent** | FastAPI + Pydantic + pandas + OpenAI SDK（通义千问） |
+| **Java 后端** | Spring Boot 3.2 + MyBatis-Plus + MySQL 8 + **Redis（库存缓存）** + EasyExcel（导入导出） |
+| **Python Agent** | FastAPI + Pydantic + PyMySQL + pandas + OpenAI SDK（通义千问） |
 | **前端** | Vue3 + Vite + Element Plus + ECharts + Axios |
-| **数据库** | MySQL 8（19 张表） |
+| **数据库** | MySQL 9（19 张表） |
 
 ---
 
@@ -112,7 +112,38 @@ WHERE sku_id = #{skuId}
 
 详见 [路径优化实验报告](ai-wms/路径优化实验报告.md)
 
-### 4.4 Agent 编排与三级降级
+### 4.4 Redis 缓存（Cache-Aside）
+
+**缓存什么**：单个 SKU 的可用库存总量（出库前校验的高频读取）
+
+```
+读：查缓存 → 命中直接返回；未命中 → 查 DB → 回填
+写：更新 DB → **删除缓存**（不是更新缓存）
+```
+
+**为什么写时删缓存而不是更新缓存**：
+更新缓存有并发顺序问题（两个请求先后更新 DB 和缓存，顺序错乱会导致缓存是旧值）；
+删除缓存让下次读自然回源，更简单也不易错。
+
+**三个防护**：
+
+| 问题 | 做法 |
+|------|------|
+| 缓存穿透 | 空结果也缓存（短 TTL） |
+| 缓存雪崩 | TTL 加随机偏移（60~90s） |
+| 缓存击穿 | 数据量小、回源快，暂不处理 |
+
+**★ 事务提交后才删缓存**：
+若在事务内删，会有这个竞态——T1 更新 DB（未提交）→ 删缓存；
+T2 读缓存 miss → 读 DB（看到旧值）→ 回填旧值；T1 提交。结果缓存是旧值。
+所以用 `TransactionSynchronization` 在**事务提交后**再删。
+
+**实测**：首次查询 592ms（回源）→ 命中缓存 **0ms**；库存变动后缓存自动清除，再查拿到新值。
+
+> **注**：这里 Redis **只做缓存，不做分布式锁**——本场景属低并发，
+> 条件更新已足够保证原子性，分布式锁是秒杀场景的方案（见 4.2）。
+
+### 4.5 Agent 编排与三级降级
 
 ```
 ① 算法正常        → SUCCESS
