@@ -1,26 +1,61 @@
 # AI-WMS 智能仓储管理系统
 
-> 一个"传统 Java 业务底座 + Python 智能 Agent"的融合系统。
-> 项目排期见 [../WMS学习与开发计划.md](../WMS学习与开发计划.md)，每日知识记录见 [../知识库/](../知识库/README.md)。
+> **项目总览请看 [../README.md](../README.md)**（含架构、实测数据、快速开始）
+> 本文只说明本目录的结构与文档索引。
 
 ## 一句话定位
-Java（Spring Boot）承载高频出入库与并发一致性；Python（FastAPI）Agent 承担库存预测、货位分配、拣货路径优化三大智能决策。RESTful + MQ 双通道联调。
 
-## 目录结构（两个子项目）
+Java（Spring Boot）承载高频出入库与并发一致性；
+Python（FastAPI）Agent 承担**拣货路径优化**与**任务编排**。
+两侧通过 RESTful 双通道（`/api` + `/agent-api`）通信。
+
+## 目录结构
+
 ```
 ai-wms/
-├── wms-backend/   ← Java 后端（Spring Boot + MyBatis + MySQL + Redis + RabbitMQ）
-└── wms-agent/     ← Python Agent（FastAPI + SQLAlchemy + 决策算法）
+├── wms-backend/      ← Java 后端（Spring Boot 3 + MyBatis-Plus + MySQL + Redis）
+├── wms-agent/        ← Python Agent（FastAPI + PyMySQL + 算法）
+├── wms-frontend/     ← Vue3 前端（Vite + Element Plus + ECharts）
+├── data/             ← 数据集（含字段说明）
+├── sql/              ← 建表 + 数据生成 + 分析/压测工具
+└── docs 类文档        ← 见下方索引
 ```
 
-## 开发进度（跟着计划走，每阶段打勾）
-- [ ] Day 1–2（9/4–9/5）：需求 + ER 设计 + 接口契约（文档在 `../知识库/每日学习/`）
-- [ ] Day 3–8（9/6–9/11）：Java 底座（商品→入库→出库→库存→缓存→货位）
-- [ ] Day 9–10（9/12–9/13）：单测 + Vue 后台
-- [ ] Day 11–15（9/14–9/18）：Python Agent（预测→货位→路径→MQ 联调）
-- [ ] Day 16–17（9/19–9/20）：压测 + 文档 + 演示
+## 文档索引
 
-## 关键设计约定（开发前定死）
-1. Java ↔ Agent 边界与接口契约（RESTful + MQ 双通道）
-2. 库存扣减用乐观锁 + Redis 分布式锁兜底
-3. Agent 决策先纯算法实现，LLM 作为后置加分项
+### 设计与规划
+| 文档 | 内容 |
+|---|---|
+| [项目设计方案.md](项目设计方案.md) | 完整设计方案（**开头有实现状态对照表**） |
+| [功能清单.md](功能清单.md) | 25 个功能点 + **完成情况** |
+| [ER设计.md](ER设计.md) | 19 张表的设计 |
+| [业务功能与页面清单.md](业务功能与页面清单.md) | 业务边界与前端页面清单 |
+
+### 数据
+| 文档 | 内容 |
+|---|---|
+| [数据模块文档.md](数据模块文档.md) | 数据来源、处理、**真实性标注**（哪些真实/推断/构造） |
+| [数据质量问题与处理.md](数据质量问题与处理.md) | 7 个数据质量问题的排查 |
+| [数据支撑核查.md](数据支撑核查.md) | 功能与数据的对应关系 |
+| [data/footwear/README.md](data/footwear/README.md) | 鞋厂数据集字段说明 |
+
+### 验证与结果
+| 文档 | 内容 |
+|---|---|
+| [并发压测报告.md](并发压测报告.md) | **四组场景零超卖**，QPS 最高 908 |
+| [路径优化实验报告.md](路径优化实验报告.md) | **100 个真实波次平均省 12.4%** |
+
+### 参考
+| 文档 | 内容 |
+|---|---|
+| [简道云WMS模板分析.md](简道云WMS模板分析.md) | 与市面零代码 WMS 模板的对比 |
+
+### 项目级文档（在上级目录）
+- [../README.md](../README.md) — 项目总览
+- [../docs/踩坑记录.md](../docs/踩坑记录.md) — 7 个真实 Bug 的排查过程
+- [../docs/Git使用指南.md](../docs/Git使用指南.md) — 版本管理规范
+- [../知识库/](../知识库/README.md) — 每日学习记录 + 面试八股
+
+## 快速启动
+
+见 [../README.md#六快速开始](../README.md)，或直接双击上级目录的 `start-all.bat`。
