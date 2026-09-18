@@ -20,6 +20,12 @@ const routes = [
         meta: { title: '首页看板', icon: 'DataBoard' }
       },
       {
+        path: 'data-import',
+        name: 'DataImport',
+        component: () => import('@/views/DataImport.vue'),
+        meta: { title: '数据导入', icon: 'UploadFilled' }
+      },
+      {
         path: 'product',
         name: 'Product',
         component: () => import('@/views/ProductList.vue'),

@@ -147,6 +147,20 @@ with open(OUT, 'w', encoding='utf-8') as f:
                 ['id', 'wave_id', 'sku_id', 'location_id', 'qty_plan'], rows)
     n_tasks = len(rows)
 
+    # ---------- 6. 波次状态处理 ----------
+    #  这些是「历史波次」（企业已经做完的），所以标记为已完成。
+    #  但为了让新用户能直接演示「拣货路径优化」功能，
+    #  保留最后 20 个波次为「待拣货」状态。
+    f.write("""
+-- 历史波次标记为已完成（这些是企业已经做完的作业）
+UPDATE picking_wave SET status = 2, finished_at = NOW();
+
+-- ★ 保留 20 个波次为「待拣货」，用于演示拣货路径优化功能
+UPDATE picking_wave
+SET status = 0, finished_at = NULL
+WHERE id > (SELECT COALESCE(MAX(id), 0) - 20 FROM (SELECT id FROM picking_wave) x);
+""")
+
 print()
 print('=' * 60)
 print('汇总:')

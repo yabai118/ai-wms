@@ -64,6 +64,15 @@
             <artifactId>commons-pool2</artifactId>
         </dependency>
 
+        <!-- ========== Excel 解析（数据导入功能）========== -->
+        <!-- EasyExcel 是阿里开源的 Excel 工具，比原生 POI 易用得多，
+             且内存占用低（SAX 模式），适合导入大文件 -->
+        <dependency>
+            <groupId>com.alibaba</groupId>
+            <artifactId>easyexcel</artifactId>
+            <version>3.3.4</version>
+        </dependency>
+
         <!-- ========== Lombok（简化实体类 getter/setter）========== -->
         <dependency>
             <groupId>org.projectlombok</groupId>
