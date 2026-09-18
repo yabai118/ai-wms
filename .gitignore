@@ -83,3 +83,6 @@ application-secret.yml
 ai-wms/sql/02_init_base.sql
 ai-wms/sql/03_init_outbound.sql
 ai-wms/sql/*.sql.bak
+
+# 初始库存（可由脚本重新生成）
+ai-wms/sql/04_init_inventory.sql
