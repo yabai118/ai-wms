@@ -36,6 +36,12 @@ const routes = [
         name: 'LocationMap',
         component: () => import('@/views/LocationMap.vue'),
         meta: { title: '库位地图', icon: 'MapLocation' }
+      },
+      {
+        path: 'inbound',
+        name: 'Inbound',
+        component: () => import('@/views/InboundList.vue'),
+        meta: { title: '入库管理', icon: 'Download' }
       }
     ]
   }
