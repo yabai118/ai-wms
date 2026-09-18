@@ -17,3 +17,4 @@ SQLAlchemy==2.0.36
 # 算法与数据处理
 numpy==2.3.4
 pandas==2.3.3
+openai>=1.59.0

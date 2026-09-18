@@ -192,17 +192,24 @@ def is_available() -> bool:
 #  ① 异常解释：把异常数据翻译成人话
 # =====================================================================
 
-def explain_anomaly(anomaly_type: str, detail: Dict[str, Any]) -> str:
+def explain_anomaly(anomaly_type: str, detail: Dict[str, Any]) -> Dict[str, str]:
     """
     用 LLM 生成异常诊断建议
 
-    没有配置 API key 时**自动降级**到预置文案——
-    这也是「规则兜底」原则的体现：LLM 不可用不能让告警没内容。
+    **返回值里带 source 字段，明确标注结果到底来自 LLM 还是规则桩**——
+    不能只看"有没有配 key"就说用了 LLM（配置了但调用失败也会降级）。
+
+    返回：
+        {"suggestion": "诊断建议", "source": "LLM" | "规则桩", "reason": "降级原因（可选）"}
     """
     client = _client()
     if client is None:
         logger.info("LLM 未配置，异常解释降级为预置文案")
-        return fallback.anomaly_fallback(anomaly_type, detail)
+        return {
+            "suggestion": fallback.anomaly_fallback(anomaly_type, detail),
+            "source": "规则桩",
+            "reason": "未配置 LLM_API_KEY",
+        }
 
     prompt = f"""你是仓储系统的运维助手。以下是系统检测到的一条异常，请给仓管员一段简明的诊断建议。
 
@@ -218,12 +225,19 @@ def explain_anomaly(anomaly_type: str, detail: Dict[str, Any]) -> str:
         resp = client.chat.completions.create(
             model=settings.llm_model,
             messages=[{"role": "user", "content": prompt}],
-            timeout=10,
+            timeout=15,
         )
-        return resp.choices[0].message.content.strip()
+        text = (resp.choices[0].message.content or "").strip()
+        if not text:
+            raise ValueError("LLM 返回空内容")
+        return {"suggestion": text, "source": "LLM"}
     except Exception as e:
         logger.warning("LLM 调用失败，降级为预置文案: %s", e)
-        return fallback.anomaly_fallback(anomaly_type, detail)
+        return {
+            "suggestion": fallback.anomaly_fallback(anomaly_type, detail),
+            "source": "规则桩",
+            "reason": f"{type(e).__name__}: {e}",
+        }
 
 
 # =====================================================================

@@ -226,11 +226,12 @@ def llm_status():
 
 @app.post("/llm/explain-anomaly", summary="用 LLM 生成异常诊断建议")
 def llm_explain(body: AnomalyExplainIn):
-    suggestion = llm.explain_anomaly(body.anomaly_type, body.detail)
+    r = llm.explain_anomaly(body.anomaly_type, body.detail)
     return {
         "anomalyType": body.anomaly_type,
-        "suggestion": suggestion,
-        "source": "LLM" if llm.is_available() else "规则桩",
+        "suggestion": r.get("suggestion"),
+        "source": r.get("source"),
+        "reason": r.get("reason"),
     }
 
 
