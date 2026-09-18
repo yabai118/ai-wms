@@ -5,6 +5,7 @@ import com.aiwms.dto.*;
 import com.aiwms.entity.*;
 import com.aiwms.mapper.*;
 import com.aiwms.service.WaveService;
+import com.aiwms.service.StockCacheService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -41,6 +42,7 @@ public class WaveServiceImpl implements WaveService {
     private final ProductSkuMapper skuMapper;
     private final OperatorMapper operatorMapper;
     private final ShipmentMapper shipmentMapper;
+    private final StockCacheService stockCacheService;
 
     /** 载具容量：27 件 */
     private static final int CAPACITY = 27;
@@ -320,6 +322,10 @@ public class WaveServiceImpl implements WaveService {
         shipment.setStatus(1);
         shipment.setShippedAt(LocalDateTime.now());
         shipmentMapper.insert(shipment);
+
+        // 发货真正扣减了库存总数 → 删缓存
+        tasks.stream().map(PickingTask::getSkuId).distinct()
+                .forEach(stockCacheService::evictAfterCommit);
 
         // 更新波次与订单
         wave.setStatus(2);

@@ -7,6 +7,7 @@ import com.aiwms.dto.InventoryVO;
 import com.aiwms.entity.*;
 import com.aiwms.mapper.*;
 import com.aiwms.service.InventoryService;
+import com.aiwms.service.StockCacheService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -30,6 +31,7 @@ public class InventoryServiceImpl implements InventoryService {
     private final ProductMapper productMapper;
     private final LocationMapper locationMapper;
     private final WarehouseAreaMapper areaMapper;
+    private final StockCacheService stockCacheService;
 
     private static final Map<String, String> BIZ_TYPE_NAMES = Map.of(
             "RECEIPT", "入库收货",
@@ -221,6 +223,7 @@ public class InventoryServiceImpl implements InventoryService {
         writeTx(inv.getSkuId(), inv.getLocationId(), 0, "FREEZE",
                 "INVENTORY", inventoryId,
                 "冻结 " + qty + " 件" + (StringUtils.hasText(reason) ? "：" + reason : ""));
+        stockCacheService.evictAfterCommit(inv.getSkuId());
         log.info("冻结库存 id={} qty={} 原因={}", inventoryId, qty, reason);
     }
 
@@ -242,6 +245,7 @@ public class InventoryServiceImpl implements InventoryService {
 
         writeTx(inv.getSkuId(), inv.getLocationId(), 0, "RELEASE",
                 "INVENTORY", inventoryId, "解冻 " + qty + " 件");
+        stockCacheService.evictAfterCommit(inv.getSkuId());
         log.info("解冻库存 id={} qty={}", inventoryId, qty);
     }
 

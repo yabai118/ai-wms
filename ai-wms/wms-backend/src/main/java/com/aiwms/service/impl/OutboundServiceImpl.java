@@ -5,6 +5,7 @@ import com.aiwms.dto.*;
 import com.aiwms.entity.*;
 import com.aiwms.mapper.*;
 import com.aiwms.service.OutboundService;
+import com.aiwms.service.StockCacheService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -36,6 +37,7 @@ public class OutboundServiceImpl implements OutboundService {
     private final ProductMapper productMapper;
     private final CustomerMapper customerMapper;
     private final LocationMapper locationMapper;
+    private final StockCacheService stockCacheService;
 
     private static final Map<Integer, String> ORDER_STATUS = Map.of(
             0, "待分配", 1, "已分配", 2, "拣货中", 3, "已发货", 4, "已取消");
@@ -194,7 +196,11 @@ public class OutboundServiceImpl implements OutboundService {
             throw new BusinessException("库存不足，无法分配。缺货 SKU: " + String.join(", ", shortage));
         }
 
-        // ⑦ 更新订单状态
+        // ⑦ 库存可用量变了 → 删缓存（事务提交后执行，避免脏读回填）
+        created.stream().map(OutboundAllocation::getSkuId).distinct()
+                .forEach(stockCacheService::evictAfterCommit);
+
+        // ⑧ 更新订单状态
         order.setStatus(1);                                 // 已分配
         orderMapper.updateById(order);
 

@@ -5,6 +5,7 @@ import com.aiwms.dto.*;
 import com.aiwms.entity.*;
 import com.aiwms.mapper.*;
 import com.aiwms.service.InboundService;
+import com.aiwms.service.StockCacheService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -38,6 +39,7 @@ public class InboundServiceImpl implements InboundService {
     private final LocationMapper locationMapper;
     private final InventoryMapper inventoryMapper;
     private final InventoryTransactionMapper transactionMapper;
+    private final StockCacheService stockCacheService;
 
     private static final Map<Integer, String> ORDER_STATUS = Map.of(
             0, "待收货", 1, "待上架", 2, "已完成");
@@ -235,7 +237,10 @@ public class InboundServiceImpl implements InboundService {
                 inventoryMapper.insert(inv);
             }
 
-            // ④ 写库存流水（溯源：这条变动是哪张入库单的哪条明细导致的）
+            // ④ 库存变了 → 删掉该 SKU 的缓存（下次读自然回源，保证读到最新值）
+            stockCacheService.evictAfterCommit(line.getSkuId());
+
+            // ⑤ 写库存流水（溯源：这条变动是哪张入库单的哪条明细导致的）
             InventoryTransaction tx = new InventoryTransaction();
             tx.setSkuId(line.getSkuId());
             tx.setLocationId(locationId);

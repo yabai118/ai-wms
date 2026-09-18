@@ -20,6 +20,7 @@ import java.util.Map;
 public class InventoryController {
 
     private final InventoryService inventoryService;
+    private final com.aiwms.service.StockCacheService stockCacheService;
 
     /**
      * 分页查询库存（五字段）
@@ -55,6 +56,25 @@ public class InventoryController {
     @GetMapping("/reconcile")
     public Result<Map<String, Object>> reconcile() {
         return Result.success(inventoryService.reconcile());
+    }
+
+    /**
+     * ★ 查 SKU 的可用库存总量（走 Redis 缓存）
+     * <p>GET /api/inventory/stock/8N10W9-11
+     *
+     * <p>这是出库前校验的高频读取，用 Cache-Aside 缓存降低数据库压力。
+     */
+    @GetMapping("/stock/{skuCode}")
+    public Result<Map<String, Object>> stock(@PathVariable String skuCode) {
+        long t0 = System.currentTimeMillis();
+        int available = stockCacheService.getAvailableStock(skuCode);
+        long cost = System.currentTimeMillis() - t0;
+
+        Map<String, Object> data = new java.util.LinkedHashMap<>();
+        data.put("skuCode", skuCode);
+        data.put("available", available);
+        data.put("costMs", cost);
+        return Result.success(data);
     }
 
     /**

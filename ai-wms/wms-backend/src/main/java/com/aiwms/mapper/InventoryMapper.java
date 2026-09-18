@@ -185,6 +185,19 @@ public interface InventoryMapper extends BaseMapper<Inventory> {
     List<Map<String, Object>> countByBizType();
 
     /**
+     * 查某 SKU 的可用库存总量（跨所有库位求和）——供 Redis 缓存服务回源用
+     *
+     * @return 可用量；SKU 不存在或无库存时返回 null
+     */
+    @Select("""
+            SELECT SUM(i.qty_available)
+            FROM inventory i
+            JOIN product_sku s ON s.id = i.sku_id
+            WHERE s.sku_code = #{skuCode}
+            """)
+    Integer sumAvailableBySkuCode(@Param("skuCode") String skuCode);
+
+    /**
      * ★ 库存对账：找出「库存表的 qty」与「流水累加值」不一致的记录
      *
      * <p>正常情况下两者应该相等（每一笔库存变动都有流水）。
