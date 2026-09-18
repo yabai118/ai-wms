@@ -114,5 +114,19 @@ SET used_slots = (SELECT COUNT(*) FROM inventory i WHERE i.location_id = l.id),
 WHERE l.location_type = 1;
 """)
 
+    # ★ 期初库存流水
+    #   为什么必须有：库存对账功能用「流水累加」重算库存再与库存表比对，
+    #   如果期初流水缺失，对账会把所有记录判为不一致。
+    f.write("""
+-- ★ 期初库存流水（库存对账依赖它）
+--   库存表的 qty 应该等于该 (sku, location) 所有流水的 qty_delta 之和，
+--   所以期初库存必须记一条 RECEIPT 流水，否则对账会全部不一致。
+INSERT INTO inventory_transaction
+  (sku_id, location_id, qty_delta, biz_type, reference_type, reference_id, remark, created_by)
+SELECT sku_id, location_id, qty, 'RECEIPT', 'INIT', 0, '期初库存初始化', 'system'
+FROM inventory
+WHERE qty > 0;
+""")
+
 print('已生成: %s (%.1f MB)' % (OUT, os.path.getsize(OUT) / 1024 / 1024))
 print('  库存总量: %d 件' % sum(r[2] for r in rows))

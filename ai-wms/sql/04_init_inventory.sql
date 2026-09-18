@@ -22,3 +22,12 @@ SET used_slots = (SELECT COUNT(*) FROM inventory i WHERE i.location_id = l.id),
     status = CASE WHEN (SELECT COUNT(*) FROM inventory i WHERE i.location_id = l.id) > 0
                   THEN 1 ELSE 0 END
 WHERE l.location_type = 1;
+
+-- ★ 期初库存流水（库存对账依赖它）
+--   库存表的 qty 应该等于该 (sku, location) 所有流水的 qty_delta 之和，
+--   所以期初库存必须记一条 RECEIPT 流水，否则对账会全部不一致。
+INSERT INTO inventory_transaction
+  (sku_id, location_id, qty_delta, biz_type, reference_type, reference_id, remark, created_by)
+SELECT sku_id, location_id, qty, 'RECEIPT', 'INIT', 0, '期初库存初始化', 'system'
+FROM inventory
+WHERE qty > 0;
