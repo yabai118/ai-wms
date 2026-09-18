@@ -54,6 +54,12 @@ const routes = [
         name: 'Wave',
         component: () => import('@/views/WaveList.vue'),
         meta: { title: '波次拣货', icon: 'Van' }
+      },
+      {
+        path: 'inventory',
+        name: 'Inventory',
+        component: () => import('@/views/InventoryList.vue'),
+        meta: { title: '库存管理', icon: 'Coin' }
       }
     ]
   }

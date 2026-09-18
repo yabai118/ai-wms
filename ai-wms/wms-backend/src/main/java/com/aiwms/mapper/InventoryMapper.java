@@ -128,4 +128,85 @@ public interface InventoryMapper extends BaseMapper<Inventory> {
             ORDER BY l.location_type DESC, i.qty_available DESC
             """)
     List<Map<String, Object>> findAvailableLocations(@Param("skuId") Long skuId);
+
+    /**
+     * 冻结库存（从可用量挪到冻结量）
+     */
+    @Update("""
+            UPDATE inventory
+            SET qty_onhold = qty_onhold + #{qty},
+                qty_available = qty_available - #{qty},
+                version = version + 1,
+                updated_at = NOW()
+            WHERE id = #{inventoryId}
+              AND qty_available >= #{qty}
+            """)
+    int freezeQty(@Param("inventoryId") Long inventoryId, @Param("qty") Integer qty);
+
+    /**
+     * 解冻库存（从冻结量还回可用量）
+     */
+    @Update("""
+            UPDATE inventory
+            SET qty_onhold = qty_onhold - #{qty},
+                qty_available = qty_available + #{qty},
+                version = version + 1,
+                updated_at = NOW()
+            WHERE id = #{inventoryId}
+              AND qty_onhold >= #{qty}
+            """)
+    int unfreezeQty(@Param("inventoryId") Long inventoryId, @Param("qty") Integer qty);
+
+    /**
+     * 库存总览统计
+     */
+    @Select("""
+            SELECT COUNT(*)                        AS recordCount,
+                   COUNT(DISTINCT sku_id)          AS skuCount,
+                   COUNT(DISTINCT location_id)     AS locationCount,
+                   COALESCE(SUM(qty), 0)           AS totalQty,
+                   COALESCE(SUM(qty_allocated), 0) AS totalAllocated,
+                   COALESCE(SUM(qty_picked), 0)    AS totalPicked,
+                   COALESCE(SUM(qty_onhold), 0)    AS totalOnhold,
+                   COALESCE(SUM(qty_available), 0) AS totalAvailable
+            FROM inventory
+            """)
+    Map<String, Object> summary();
+
+    /**
+     * 按业务类型统计流水
+     */
+    @Select("""
+            SELECT biz_type AS bizType, COUNT(*) AS cnt, COALESCE(SUM(qty_delta),0) AS delta
+            FROM inventory_transaction
+            GROUP BY biz_type
+            ORDER BY cnt DESC
+            """)
+    List<Map<String, Object>> countByBizType();
+
+    /**
+     * ★ 库存对账：找出「库存表的 qty」与「流水累加值」不一致的记录
+     *
+     * <p>正常情况下两者应该相等（每一笔库存变动都有流水）。
+     * <p>如果真的查出不一致，说明有操作改了库存却没记流水——这是严重的 bug 信号。
+     */
+    @Select("""
+            SELECT i.id            AS id,
+                   s.sku_code      AS skuCode,
+                   l.location_code AS locationCode,
+                   i.qty           AS stockQty,
+                   COALESCE(t.ledger_qty, 0) AS ledgerQty,
+                   (i.qty - COALESCE(t.ledger_qty, 0)) AS diff
+            FROM inventory i
+            JOIN product_sku s ON s.id = i.sku_id
+            JOIN location l ON l.id = i.location_id
+            LEFT JOIN (
+                SELECT sku_id, location_id, SUM(qty_delta) AS ledger_qty
+                FROM inventory_transaction
+                GROUP BY sku_id, location_id
+            ) t ON t.sku_id = i.sku_id AND t.location_id = i.location_id
+            WHERE i.qty != COALESCE(t.ledger_qty, 0)
+            LIMIT 50
+            """)
+    List<Map<String, Object>> reconcile();
 }
