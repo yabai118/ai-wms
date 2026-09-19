@@ -222,4 +222,29 @@ public interface InventoryMapper extends BaseMapper<Inventory> {
             LIMIT 50
             """)
     List<Map<String, Object>> reconcile();
+
+    /**
+     * ⚠️ <b>对照组专用：不做任何可用量判断，直接扣减。</b>
+     *
+     * <p>与 {@link #allocateQty} 的唯一区别是——<b>WHERE 里没有
+     * {@code qty_available >= qty} 这个守卫</b>。
+     *
+     * <p>它存在的意义是给并发压测做<b>负面对照</b>：
+     * 证明「把判断写进 WHERE」不是多此一举——不写的话，
+     * 高并发下库存真的会被扣成负数（超卖）。
+     *
+     * <p><b>业务代码不要调用它。</b>
+     */
+    @Update("""
+            UPDATE inventory
+            SET qty_allocated = qty_allocated + #{qty},
+                qty_available = qty_available - #{qty},
+                version = version + 1,
+                updated_at = NOW()
+            WHERE sku_id = #{skuId}
+              AND location_id = #{locationId}
+            """)
+    int allocateQtyNaive(@Param("skuId") Long skuId,
+                         @Param("locationId") Long locationId,
+                         @Param("qty") Integer qty);
 }

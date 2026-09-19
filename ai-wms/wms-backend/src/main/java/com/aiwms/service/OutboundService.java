@@ -25,4 +25,15 @@ public interface OutboundService {
 
     /** 查询某订单的分配明细 */
     List<AllocationVO> listAllocations(Long orderId);
+
+    /**
+     * ⚠️ <b>【对照组，仅用于验证压测方法】</b>故意「先查后扣」，不使用条件更新。
+     *
+     * <p>把它和正式的 {@link #allocate} 放在同一个压测脚本下跑：
+     * 这一版会把库存扣成负数（超卖），正式版不会。
+     * <b>这证明压测脚本真的能发现问题，而不是"跑了一遍没报错"。</b>
+     *
+     * <p><b>业务代码不要调用它。</b>
+     */
+    void allocateNaive(Long orderId);
 }

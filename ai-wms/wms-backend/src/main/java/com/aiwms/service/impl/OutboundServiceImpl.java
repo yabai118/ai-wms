@@ -217,6 +217,83 @@ public class OutboundServiceImpl implements OutboundService {
     }
 
     // ==================================================================
+    //  ⚠️ 对照组：故意「先查后扣」，不使用条件更新
+    //
+    //  和上面的 allocate 唯一的区别：
+    //    allocate      → 判断写进 WHERE（qty_available >= qty），数据库行锁保证原子
+    //    allocateNaive → 先 SELECT 查够不够，再无条件 UPDATE
+    //
+    //  它的用途是给并发压测做「负面对照」：
+    //  如果这一版在同样的压测下**超卖**，说明压测脚本真的能发现问题；
+    //  如果两版都不超卖，那测试本身就没有说服力。
+    // ==================================================================
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void allocateNaive(Long orderId) {
+        OutboundOrder order = orderMapper.selectById(orderId);
+        if (order == null) {
+            throw new BusinessException(404, "订单不存在");
+        }
+        if (order.getStatus() != 0) {
+            throw new BusinessException("订单不是「待分配」状态");
+        }
+
+        List<OutboundOrderLine> lines = lineMapper.selectList(
+                new LambdaQueryWrapper<OutboundOrderLine>().eq(OutboundOrderLine::getOrderId, orderId));
+
+        List<String> shortage = new ArrayList<>();
+
+        for (OutboundOrderLine line : lines) {
+            int need = line.getQty();
+            List<Map<String, Object>> locs = inventoryMapper.findAvailableLocations(line.getSkuId());
+
+            for (Map<String, Object> loc : locs) {
+                if (need <= 0) break;
+                Long locationId = ((Number) loc.get("locationId")).longValue();
+                int available = ((Number) loc.get("qtyAvailable")).intValue();
+
+                // ① 先查：读的时候没有锁，并发下多个线程会读到同一个值
+                if (available < need) continue;
+
+                // ② 放大竞态窗口：模拟「判断完了、还没扣减」的那一小段耗时
+                try {
+                    Thread.sleep(20);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+
+                // ③ 再扣：没有 WHERE 守卫 → 并发下会把库存扣成负数
+                inventoryMapper.allocateQtyNaive(line.getSkuId(), locationId, need);
+
+                OutboundAllocation a = new OutboundAllocation();
+                a.setOrderLineId(line.getId());
+                a.setSkuId(line.getSkuId());
+                a.setLocationId(locationId);
+                a.setQtyAllocated(need);
+                a.setStatus(0);
+                allocationMapper.insert(a);
+
+                need = 0;
+            }
+
+            // 缺货检查：和正式版保持一致（否则对照组会「报成功但没分配」，
+            // 那是另一个 bug，会干扰"只差原子性"这个对照前提）
+            if (need > 0) {
+                ProductSku sku = skuMapper.selectById(line.getSkuId());
+                shortage.add(sku == null ? String.valueOf(line.getSkuId()) : sku.getSkuCode());
+            }
+        }
+
+        if (!shortage.isEmpty()) {
+            throw new BusinessException("库存不足，无法分配。缺货 SKU: " + String.join(", ", shortage));
+        }
+
+        order.setStatus(1);
+        orderMapper.updateById(order);
+    }
+
+    // ==================================================================
     //  辅助
     // ==================================================================
 
