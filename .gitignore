@@ -87,11 +87,16 @@ ai-wms/sql/03_init_outbound.sql
 ai-wms/sql/04_init_inventory.sql
 ai-wms/sql/*.sql.bak
 
+# ---------- 精确最优解缓存（实验结果缓存，可重新生成）----------
+ai-wms/sql/tools/.optimal_cache.json
+
 # ---------- 不上传（个人过程文档，非项目本体）----------
 # 只上传 ai-wms/（项目本体）和 README.md
 开发过程文档/
 知识库/
 需求文档/
+# 交付文档/ = Word 交付物 + md2docx.py（生成的交付件，不入库）
+交付文档/
 
 # ---------- AI 工具本地配置（个人文件，不上传）----------
 .claude/
