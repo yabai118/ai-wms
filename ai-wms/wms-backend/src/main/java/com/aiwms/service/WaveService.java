@@ -28,6 +28,14 @@ public interface WaveService {
     /** 查询波次的拣货任务 */
     List<PickingTaskVO> listTasks(Long waveId);
 
+    /**
+     * 把优化后的拣货顺序写入 {@code picking_task.seq_no}
+     *
+     * @param taskIds 按优化顺序排列的任务 ID（必须是该波次的全部任务、不重复）；
+     *                传空列表表示清除顺序、恢复到原始顺序
+     */
+    void applySequence(Long waveId, List<Long> taskIds);
+
     /** 计算波次的行走距离（按拣货顺序） */
     int calcPathDistance(Long waveId);
 }

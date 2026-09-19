@@ -4,6 +4,7 @@ import com.aiwms.common.Result;
 import com.aiwms.dto.PickingTaskVO;
 import com.aiwms.dto.WaveGenerateRequest;
 import com.aiwms.dto.WaveQuery;
+import com.aiwms.dto.WaveSequenceRequest;
 import com.aiwms.dto.WaveVO;
 import com.aiwms.service.WaveService;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -72,6 +73,22 @@ public class WaveController {
 
     /**
      * 查询波次的拣货任务
+     * <p>GET /api/waves/{id}/tasks
+     */
+    /**
+     * 应用路径优化顺序：把优化后的拣货顺序写入拣货任务
+     * <p>POST /api/waves/{id}/sequence
+     * <p>算法服务只读，算出顺序后由前端调本接口落库
+     */
+    @PostMapping("/{id}/sequence")
+    public Result<Void> applySequence(@PathVariable Long id,
+                                      @RequestBody WaveSequenceRequest request) {
+        waveService.applySequence(id, request.getTaskIds());
+        return Result.success();
+    }
+
+    /**
+     * 查询波次的拣货任务（按 seq_no 排序，即优化后的顺序）
      * <p>GET /api/waves/{id}/tasks
      */
     @GetMapping("/{id}/tasks")

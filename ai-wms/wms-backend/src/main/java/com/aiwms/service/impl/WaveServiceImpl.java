@@ -7,6 +7,7 @@ import com.aiwms.mapper.*;
 import com.aiwms.service.WaveService;
 import com.aiwms.service.StockCacheService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
@@ -108,6 +109,61 @@ public class WaveServiceImpl implements WaveService {
             vo.setStatusName(TASK_STATUS.getOrDefault(st, "未知"));
             return vo;
         }).toList();
+    }
+
+    // ==================================================================
+    //  ★ 应用路径优化顺序（把算法结果落到业务上）
+    //
+    //  「路径优化」本身只是在算法服务里算出最优顺序，
+    //   真正让它影响拣货作业的是这一步：把顺序写进 picking_task.seq_no。
+    //   listByWave 本来就按 seq_no 排序，写完拣货单顺序就变了。
+    // ==================================================================
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void applySequence(Long waveId, List<Long> taskIds) {
+        PickingWave wave = waveMapper.selectById(waveId);
+        if (wave == null) {
+            throw new BusinessException("波次不存在");
+        }
+        if (wave.getStatus() == null || wave.getStatus() != 0) {
+            throw new BusinessException("只有「待拣货」的波次才能改拣货顺序");
+        }
+
+        List<PickingTask> tasks = taskMapper.selectList(
+                new LambdaQueryWrapper<PickingTask>().eq(PickingTask::getWaveId, waveId));
+        if (tasks.isEmpty()) {
+            throw new BusinessException("该波次没有拣货任务");
+        }
+
+        // 清除顺序：全部置空，恢复按 id 排
+        if (taskIds == null || taskIds.isEmpty()) {
+            for (PickingTask t : tasks) {
+                taskMapper.update(null, new LambdaUpdateWrapper<PickingTask>()
+                        .eq(PickingTask::getId, t.getId())
+                        .set(PickingTask::getSeqNo, null));
+            }
+            log.info("波次 {} 已清除优化顺序（{} 个任务）", waveId, tasks.size());
+            return;
+        }
+
+        // 校验「不重不漏」：必须正好是该波次的全部任务
+        Set<Long> expected = tasks.stream().map(PickingTask::getId)
+                .collect(Collectors.toSet());
+        Set<Long> got = new HashSet<>(taskIds);
+        if (got.contains(null) || got.size() != taskIds.size()) {
+            throw new BusinessException("任务列表有重复或空值");
+        }
+        if (!got.equals(expected)) {
+            throw new BusinessException("任务列表与该波次不匹配，必须包含全部任务且不重复");
+        }
+
+        for (int i = 0; i < taskIds.size(); i++) {
+            taskMapper.update(null, new LambdaUpdateWrapper<PickingTask>()
+                    .eq(PickingTask::getId, taskIds.get(i))
+                    .set(PickingTask::getSeqNo, i + 1));
+        }
+        log.info("波次 {} 已应用优化顺序（{} 个任务）", waveId, taskIds.size());
     }
 
     // ==================================================================

@@ -34,6 +34,15 @@ export const waveApi = {
   /** 行走距离 */
   distance(id) {
     return request.get(`/waves/${id}/distance`)
+  },
+
+  /**
+   * ★ 应用路径优化顺序：把算法算出的拣货顺序写入拣货任务
+   * @param {number} id 波次 ID
+   * @param {number[]} taskIds 按优化顺序排列的任务 ID；传 [] 表示清除顺序
+   */
+  applySequence(id, taskIds) {
+    return request.post(`/waves/${id}/sequence`, { taskIds })
   }
 }
 
