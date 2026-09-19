@@ -43,8 +43,8 @@ class TaskOut(CamelModel):
     x: int
     y: int
     qty: int
-    corridor: int = Field(description="归属通道 x 坐标")
-    depth: int = Field(description="相对通道的取货深度")
+    aisle: int = Field(description="归属的横向拣货通道 y 坐标")
+    reach: int = Field(description="从拣货通道走到该货位的取货距离")
 
 
 class RouteOut(CamelModel):
@@ -52,11 +52,15 @@ class RouteOut(CamelModel):
     strategy: str
     strategy_name: str
     total_distance: int = Field(description="总行走距离（米）")
-    corridor_distance: int
-    horizontal_distance: int
-    depth_distance: int
+    aisle_distance: int = Field(description="沿横向拣货通道走的距离")
+    cross_distance: int = Field(description="经纵向横通道换道的距离")
+    reach_distance: int = Field(description="从通道走到货位取货的距离（与路径顺序无关的常数项）")
     task_count: int
     sequence: List[TaskOut]
+    path: List[List[int]] = Field(
+        default_factory=list,
+        description="实际行走轨迹的折线顶点 [[x,y],...]；前端画路径图用这个，"
+                    "直接连货位坐标会画出穿货架的斜线")
 
 
 class CompareOut(CamelModel):

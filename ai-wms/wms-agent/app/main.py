@@ -50,7 +50,7 @@ def to_task_out(seq: int, t: routing.PickTask) -> TaskOut:
     return TaskOut(
         seq=seq, task_id=t.task_id, sku_code=t.sku_code,
         location_code=t.location_code, x=t.x, y=t.y, qty=t.qty,
-        corridor=t.corridor, depth=t.depth,
+        aisle=t.aisle, reach=t.reach,
     )
 
 
@@ -59,11 +59,12 @@ def to_route_out(r: routing.RouteResult) -> RouteOut:
         strategy=r.strategy,
         strategy_name=r.strategy_name,
         total_distance=r.total_distance,
-        corridor_distance=r.corridor_distance,
-        horizontal_distance=r.horizontal_distance,
-        depth_distance=r.depth_distance,
+        aisle_distance=r.aisle_distance,
+        cross_distance=r.cross_distance,
+        reach_distance=r.reach_distance,
         task_count=len(r.sequence),
         sequence=[to_task_out(i, t) for i, t in enumerate(r.sequence, 1)],
+        path=r.path,
     )
 
 

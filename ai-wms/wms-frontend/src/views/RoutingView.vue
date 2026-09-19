@@ -21,6 +21,12 @@
             <el-button type="primary" size="small" :loading="loading" @click="load">
               <el-icon><Refresh /></el-icon> 重新优化
             </el-button>
+            <el-button type="success" size="small" :disabled="!result" @click="applySequence">
+              <el-icon><Check /></el-icon> 应用到拣货任务
+            </el-button>
+            <el-button size="small" :disabled="!result" @click="clearSequence">
+              清除顺序
+            </el-button>
           </div>
         </div>
       </template>
@@ -43,7 +49,7 @@
               {{ diffText(r) }}
             </div>
             <div class="sc-detail">
-              通道 {{ r.corridorDistance }} · 横向 {{ r.horizontalDistance }} · 取货 {{ r.depthDistance }}
+              沿通道 {{ r.aisleDistance }} · 换道 {{ r.crossDistance }} · 取货 {{ r.reachDistance }}
             </div>
           </div>
         </div>
@@ -99,7 +105,7 @@
             <el-table-column prop="corridor" label="归属通道" width="110" align="center">
               <template #default="{ row }">x = {{ row.corridor }}</template>
             </el-table-column>
-            <el-table-column prop="depth" label="取货深度" width="100" align="center">
+            <el-table-column prop="reach" label="取货距离" width="100" align="center">
               <template #default="{ row }">{{ row.depth }} 米</template>
             </el-table-column>
             <el-table-column prop="skuCode" label="SKU 编码" />
@@ -114,6 +120,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, nextTick } from 'vue'
 import * as echarts from 'echarts'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { agentApi } from '@/api/agent'
 import { waveApi } from '@/api/wave'
 
@@ -180,15 +187,52 @@ async function load() {
   }
 }
 
+/* ---------- 把优化结果落到业务上：写入拣货任务顺序 ---------- */
+
+async function applySequence() {
+  if (!result.value || !waveId.value) return
+  const route = result.value.routes.find(r => r.strategy === result.value.bestStrategy)
+  try {
+    await ElMessageBox.confirm(
+      `将把「${route.strategyName}」算出的拣货顺序（${route.taskCount} 个任务）` +
+      `写入该波次的拣货任务。之后拣货单会按新顺序显示。`,
+      '应用到拣货任务', { type: 'warning', confirmButtonText: '确认应用' })
+  } catch {
+    return
+  }
+  try {
+    await waveApi.applySequence(waveId.value, route.sequence.map(t => t.taskId))
+    ElMessage.success('已应用到拣货任务，可到「波次拣货」页查看新顺序')
+  } catch (e) {
+    ElMessage.error('应用失败：' + (e?.message || e))
+  }
+}
+
+async function clearSequence() {
+  if (!waveId.value) return
+  try {
+    await waveApi.applySequence(waveId.value, [])
+    ElMessage.success('已清除优化顺序，恢复为原始顺序')
+  } catch (e) {
+    ElMessage.error('清除失败：' + (e?.message || e))
+  }
+}
+
 /* ---------- 路径图：把货位按拣货顺序连起来 ---------- */
 function drawPath() {
   if (!bestRoute.value) return
   pathChart = pathChart || echarts.init(pathRef.value)
   const seq = bestRoute.value.sequence
 
-  // 起点
+  // 站点（起点 + 各货位）
   const points = [[66, 0], ...seq.map(t => [t.x, t.y])]
   const labels = ['起点', ...seq.map(t => `${t.seq}`)]
+
+  // 行走轨迹：用后端返回的真实折线（含沿通道行进、两端换道、进架取货再退回）
+  // ⚠️ 不能用 points 直连——那会画出穿货架的斜线，物理上走不通
+  const routePath = (bestRoute.value.path && bestRoute.value.path.length > 1)
+    ? bestRoute.value.path
+    : points
 
   pathChart.setOption({
     textStyle: { fontFamily: FONT },
@@ -220,9 +264,9 @@ function drawPath() {
     },
     series: [
       {
-        // 拣货路线
+        // 拣货路线（真实行走轨迹）
         type: 'line',
-        data: points,
+        data: routePath,
         symbol: 'none',
         lineStyle: { width: 2, color: C.s1, opacity: 0.75, curveness: 0 },
         z: 2
@@ -264,8 +308,8 @@ function drawBar() {
       formatter: (ps) => {
         const r = routes[ps[0].dataIndex]
         return `<b>${r.strategyName}</b><br/>总距离：${r.totalDistance} 米<br/>
-                通道内：${r.corridorDistance} 米<br/>横向：${r.horizontalDistance} 米<br/>
-                取货深度：${r.depthDistance} 米`
+                沿拣货通道：${r.aisleDistance} 米<br/>换道：${r.crossDistance} 米<br/>
+                取货：${r.reachDistance} 米`
       }
     },
     xAxis: {
