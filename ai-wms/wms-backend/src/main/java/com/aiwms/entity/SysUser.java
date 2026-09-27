@@ -10,19 +10,26 @@ import java.time.LocalDateTime;
 /**
  * 系统账号（登录用）
  *
- * <p><b>★ 与 {@link Operator} 是两张表，故意分开的：</b>
+ * <p><b>★ 与 {@link Staff} 是一对一的关系，且这张表只剩"账号"本身的信息：</b>
+ *
+ * <pre>
+ *   staff    —— 员工档案：工号（=登录名）、姓名（=显示名）、作业归属
+ *   sys_user —— 系统账号：密码、角色、状态、最后登录时间
+ * </pre>
+ *
+ * <p><b>没有 username / display_name 两列是刻意的</b>——
+ * 登录名就是 {@code staff.staff_code}，显示名就是 {@code staff.staff_name}。
+ * 单独再存一遍是同一份数据存两遍，改名还得改两处。
+ *
+ * <p>{@link #staffId} 是 <b>NOT NULL + UNIQUE</b>：
  * <ul>
- *   <li>{@code operator} —— 作业人员档案（谁在仓库里干活），人员/HR 的范畴</li>
- *   <li>{@code sys_user} —— 系统账号（谁登录了系统），系统策略的范畴</li>
+ *   <li><b>NOT NULL</b> —— 每个账号都必须有人负责，包括管理员。
+ *       管理员权限最大，出了问题查不到是谁在操作，审计链就断在最需要它的地方。</li>
+ *   <li><b>UNIQUE</b> —— 一个员工只能有一个账号，避免"一个人开好几个号"导致归属混乱。</li>
  * </ul>
  *
- * <p>两者靠 {@link #operatorId} 关联，可为空。空值的含义是
- * 「这个账号不代表某个具体的现场作业人员」——管理员、主管是管理岗，
- * 本来就不在拣货现场。
- *
- * <p>为什么不合成一张表：这两张表<b>变化的原因不同</b>。人员变动改 operator，
- * 加管理员/改密码/停用账号改 sys_user。而且现实里账号和人不是一一对应的
- * （临时工不登录、由组长代操作），合表就表达不了。
+ * <p><b>集成账号（ERP / 物流 / BI）不适用</b>——它们没有工号姓名，
+ * 将来走 API Key 独立通道，根本不进这张表。见 {@code 项目设计方案.md} 10.4 节。
  */
 @Data
 @TableName("sys_user")
@@ -31,20 +38,14 @@ public class SysUser {
     @TableId(type = IdType.AUTO)
     private Long id;
 
-    /** 登录名 */
-    private String username;
-
     /** 密码哈希（BCrypt），绝不返回给前端 */
     private String password;
 
-    /** 显示名（顶栏展示用） */
-    private String displayName;
+    /** 关联员工（staff.id）—— 登录名与显示名都从这个员工身上取 */
+    private Long staffId;
 
-    /** 角色：ADMIN / RECEIVER / PICKER / SUPERVISOR */
+    /** 角色码，取值见 sys_role 表（★ 查表校验，不是硬编码常量） */
     private String role;
-
-    /** 关联的作业人员 id（operator.id），管理岗为 null */
-    private Long operatorId;
 
     /** 0禁用 1启用 */
     private Integer status;

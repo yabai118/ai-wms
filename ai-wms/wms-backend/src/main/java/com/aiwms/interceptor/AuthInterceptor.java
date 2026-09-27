@@ -1,9 +1,10 @@
 package com.aiwms.interceptor;
 
-import com.aiwms.common.RequireRole;
+import com.aiwms.common.RequirePermission;
 import com.aiwms.common.Result;
-import com.aiwms.common.Roles;
 import com.aiwms.common.UserContext;
+import com.aiwms.service.PermissionService;
+import com.aiwms.service.TokenRevocationService;
 import com.aiwms.util.JwtUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
@@ -15,29 +16,33 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerInterceptor;
 
-import java.util.Arrays;
-
 /**
  * 登录鉴权拦截器
  *
- * <p>做两件事：<b>验 token</b>（你是谁）和 <b>查角色</b>（你能不能干这个）。
+ * <p>做三件事，顺序不能换：
+ * <pre>
+ *   ① 验 token      —— 你是谁          （签名、有效期）
+ *   ② 查撤销        —— 这个 token 还算数吗（改密码后旧 token 应立即失效）
+ *   ③ 查权限点      —— 你能不能干这个  （表驱动，去 sys_role_permission 查）
+ * </pre>
  *
- * <p>白名单不在这里判断，而是由 {@code WebMvcConfig} 的
- * {@code excludePathPatterns} 排除——那套 pattern 匹配的就是
- * <b>去掉 context-path 之后</b>的路径（本项目 context-path 是 {@code /api}，
- * 所以写 {@code /auth/login} 而不是 {@code /api/auth/login}）。
+ * <p>白名单不在这里判断，而是由 {@code WebMvcConfig} 的 {@code excludePathPatterns}
+ * 排除——那套 pattern 匹配的是<b>去掉 context-path 之后</b>的路径
+ * （本项目 context-path 是 {@code /api}，所以写 {@code /auth/login}）。
  *
- * <h3>两个刻意的设计决定</h3>
+ * <h3>三个刻意的设计决定</h3>
  *
  * <p><b>① 不抛异常，直接写响应。</b>
  * {@code @RestControllerAdvice} 主要覆盖 handler 执行阶段的异常，
- * 拦截器 preHandle 里抛出来的不一定能被它接住。这里直接置状态码 + 写 JSON，
- * 结果确定可控。
+ * 拦截器 preHandle 里抛出来的不一定能被它接住。这里直接置状态码 + 写 JSON。
  *
- * <p><b>② 返回真实的 HTTP 状态码（401/403），而不是 HTTP 200 + 业务码。</b>
- * 项目里的业务异常（库存不足等）确实走 HTTP 200 + {@code code} 字段，
- * 但"没登录/没权限"不是业务结果，是协议层面的事，用真实状态码更准确，
- * 前端也能据此做统一跳转。
+ * <p><b>② 返回真实的 HTTP 状态码（401/403）。</b>
+ * 业务异常（库存不足等）走 HTTP 200 + {@code code} 字段，
+ * 但"没登录/没权限"是协议层面的事，用真实状态码更准确，前端也好做统一跳转。
+ *
+ * <p><b>③ 权限判断委托给 {@link PermissionService}，不在注解上写角色。</b>
+ * 注解只声明"这个接口需要什么能力"，"哪个角色有这个能力"是数据库里的一行 ——
+ * 所以加角色、调权限都不用改代码。
  */
 @Slf4j
 @Component
@@ -48,6 +53,8 @@ public class AuthInterceptor implements HandlerInterceptor {
 
     private final JwtUtil jwtUtil;
     private final ObjectMapper objectMapper;
+    private final PermissionService permissionService;
+    private final TokenRevocationService tokenRevocationService;
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response,
@@ -57,6 +64,7 @@ public class AuthInterceptor implements HandlerInterceptor {
             return true;
         }
 
+        // ---- ① 验 token ----
         String token = extractToken(request);
         if (token == null) {
             return reject(response, 401, "未登录，请先登录");
@@ -71,14 +79,20 @@ public class AuthInterceptor implements HandlerInterceptor {
             return reject(response, 401, "登录已过期，请重新登录");
         }
 
+        // ---- ② 查撤销（改密码后旧 token 立即失效）----
+        if (tokenRevocationService.isRevoked(user.staffCode(), user.issuedAt())) {
+            log.info("令牌已被撤销，拒绝: user={}", user.staffCode());
+            return reject(response, 401, "密码已修改，请重新登录");
+        }
+
         UserContext.set(user);
 
-        // ---- 角色校验 ----
+        // ---- ③ 查权限点 ----
         if (handler instanceof HandlerMethod hm) {
-            RequireRole required = hm.getMethodAnnotation(RequireRole.class);
-            if (required != null && !hasRole(user.role(), required.value())) {
-                log.warn("越权访问被拦: user={} role={} api={}",
-                        user.username(), user.role(), request.getRequestURI());
+            RequirePermission required = hm.getMethodAnnotation(RequirePermission.class);
+            if (required != null && !permissionService.has(user.role(), required.value())) {
+                log.warn("越权访问被拦: user={} role={} 需要权限={} api={}",
+                        user.staffCode(), user.role(), required.value(), request.getRequestURI());
                 return reject(response, 403, "没有权限执行该操作");
             }
         }
@@ -102,14 +116,6 @@ public class AuthInterceptor implements HandlerInterceptor {
         }
         String token = header.substring(BEARER_PREFIX.length()).trim();
         return token.isEmpty() ? null : token;
-    }
-
-    /** ADMIN 统一放行，不用在每个 @RequireRole 里重复写 */
-    private boolean hasRole(String userRole, String[] allowed) {
-        if (Roles.ADMIN.equals(userRole)) {
-            return true;
-        }
-        return Arrays.asList(allowed).contains(userRole);
     }
 
     private boolean reject(HttpServletResponse response, int code, String message) throws Exception {

@@ -1,9 +1,9 @@
 package com.aiwms.controller;
 
 import com.aiwms.common.BusinessException;
-import com.aiwms.common.RequireRole;
+import com.aiwms.common.Permissions;
+import com.aiwms.common.RequirePermission;
 import com.aiwms.common.Result;
-import com.aiwms.common.Roles;
 import com.aiwms.dto.ImportResultVO;
 import com.aiwms.service.ImportService;
 import jakarta.servlet.http.HttpServletResponse;
@@ -59,7 +59,7 @@ public class ImportController {
      * <p>POST /api/import/products
      */
     @PostMapping("/products")
-    @RequireRole(Roles.ADMIN)
+    @RequirePermission(Permissions.IMPORT_DATA)
     public Result<ImportResultVO> importProducts(@RequestParam("file") MultipartFile file) {
         ImportResultVO r = importService.importProducts(file);
         return Result.success(summary(r), r);
@@ -70,7 +70,7 @@ public class ImportController {
      * <p>POST /api/import/locations
      */
     @PostMapping("/locations")
-    @RequireRole(Roles.ADMIN)
+    @RequirePermission(Permissions.IMPORT_DATA)
     public Result<ImportResultVO> importLocations(@RequestParam("file") MultipartFile file) {
         ImportResultVO r = importService.importLocations(file);
         return Result.success(summary(r), r);
@@ -81,7 +81,7 @@ public class ImportController {
      * <p>POST /api/import/inventory
      */
     @PostMapping("/inventory")
-    @RequireRole(Roles.ADMIN)
+    @RequirePermission(Permissions.IMPORT_DATA)
     public Result<ImportResultVO> importInventory(@RequestParam("file") MultipartFile file) {
         ImportResultVO r = importService.importInventory(file);
         return Result.success(summary(r), r);

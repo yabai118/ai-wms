@@ -89,8 +89,10 @@
             </el-table-column>
             <el-table-column label="操作" width="140" align="center">
               <template #default="{ row }">
-                <el-button link type="warning" size="small" @click="openFreeze(row)">冻结</el-button>
-                <el-button link type="success" size="small"
+                <el-button v-if="hasPermission('inventory:freeze')" link type="warning"
+                           size="small" @click="openFreeze(row)">冻结</el-button>
+                <el-button v-if="hasPermission('inventory:unfreeze')" link type="success"
+                           size="small"
                            :disabled="row.qtyOnhold === 0"
                            @click="doUnfreeze(row)">解冻</el-button>
               </template>
@@ -179,6 +181,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox, ElNotification } from 'element-plus'
 import { inventoryApi, exportInventoryUrl } from '@/api/inventory'
+import { hasPermission } from '@/utils/permission'
 
 const activeTab = ref('stock')
 const loading = ref(false)

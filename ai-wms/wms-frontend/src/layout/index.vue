@@ -53,14 +53,17 @@
           <el-dropdown @command="handleCommand">
             <span class="user-trigger">
               <el-avatar :size="28" style="background:#1f4e79">{{ avatarText }}</el-avatar>
-              <span class="user-name">{{ user.displayName || user.username }}</span>
+              <span class="user-name">{{ user.staffName || user.staffCode }}</span>
               <el-tag size="small" type="info" effect="plain">{{ user.roleName }}</el-tag>
               <el-icon class="user-arrow"><ArrowDown /></el-icon>
             </span>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item disabled>登录名：{{ user.username }}</el-dropdown-item>
-                <el-dropdown-item command="logout" divided>
+                <el-dropdown-item disabled>工号：{{ user.staffCode }}</el-dropdown-item>
+                <el-dropdown-item command="change-password" divided>
+                  <el-icon><Lock /></el-icon> 修改密码
+                </el-dropdown-item>
+                <el-dropdown-item command="logout">
                   <el-icon><SwitchButton /></el-icon> 退出登录
                 </el-dropdown-item>
               </el-dropdown-menu>
@@ -73,14 +76,43 @@
         <router-view />
       </el-main>
     </el-container>
+
+    <!-- ============ 修改密码 ============ -->
+    <el-dialog v-model="pwdVisible" title="修改密码" width="440px">
+      <el-alert type="warning" :closable="false" show-icon style="margin-bottom:14px">
+        修改成功后需要用新密码重新登录
+      </el-alert>
+      <el-form :model="pwdForm" label-width="90px" size="small">
+        <el-form-item label="原密码">
+          <el-input v-model="pwdForm.oldPassword" type="password" show-password
+                    placeholder="当前使用的密码" />
+        </el-form-item>
+        <el-form-item label="新密码">
+          <el-input v-model="pwdForm.newPassword" type="password" show-password
+                    placeholder="6~32 位" />
+        </el-form-item>
+        <el-form-item label="确认新密码">
+          <el-input v-model="pwdForm.confirmPassword" type="password" show-password
+                    placeholder="再输一次" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="pwdVisible = false">取消</el-button>
+        <el-button type="primary" :loading="pwdSubmitting" @click="submitChangePassword">
+          确认修改
+        </el-button>
+      </template>
+    </el-dialog>
   </el-container>
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessageBox } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { getUser, clearLogin } from '@/utils/authStorage'
+import { hasPermission } from '@/utils/permission'
+import { authApi } from '@/api/auth'
 
 const route = useRoute()
 const router = useRouter()
@@ -88,42 +120,95 @@ const router = useRouter()
 /** 当前登录用户（登录后整页/路由跳转进来，此时 localStorage 已写好） */
 const user = ref(getUser())
 
-/** 头像里的首字：优先显示名，没有就取登录名 */
+/** 头像里的首字：优先姓名，没有就取工号 */
 const avatarText = computed(() => {
-  const name = user.value.displayName || user.value.username || '?'
+  const name = user.value.staffName || user.value.staffCode || '?'
   return name.charAt(0)
 })
 
-async function handleCommand(command) {
-  if (command !== 'logout') return
-  try {
-    await ElMessageBox.confirm('确认退出登录？', '退出', { type: 'warning' })
-  } catch {
-    return   // 用户点了取消
-  }
-  // 轻量版登出只清前端凭证；token 本身在过期前仍有效，
-  // 真要做「服务端立即失效」得加黑名单（Redis 已就绪，后续可做）
-  clearLogin()
-  router.replace('/login')
-}
-
-/** 菜单配置（后续新页面往这里加） */
-const menus = [
-  { path: '/dashboard', title: '首页看板', icon: 'DataBoard' },
-  { path: '/data-import', title: '数据导入', icon: 'UploadFilled' },
-  { path: '/product', title: '商品管理', icon: 'Goods' },
-  { path: '/location', title: '库位管理', icon: 'Grid' },
-  { path: '/location-map', title: '库位地图', icon: 'MapLocation' },
-  { path: '/inbound', title: '入库管理', icon: 'Download' },
-  { path: '/outbound', title: '出库管理', icon: 'Upload' },
-  { path: '/wave', title: '波次拣货', icon: 'Van' },
-  { path: '/inventory', title: '库存管理', icon: 'Coin' },
-  { path: '/routing', title: '路径优化', icon: 'Guide' },
-  { path: '/agent', title: '智能助手', icon: 'MagicStick' }
-]
+/**
+ * 侧边栏菜单 —— **从路由自动生成**
+ *
+ * 改造前这里是手写的一份数组，和 router 里的 meta 重复维护，加页面要改两处。
+ * 现在只有路由一处真相：加页面 = 加一条路由，菜单自己就出来了。
+ *
+ * 角色过滤也在这里做：路由 meta.perm 就是「进这个页面需要的权限点」，
+ * 用后端下发的权限集合一比即可 —— 所以后端加新角色，前端一行都不用改。
+ */
+const menus = computed(() => {
+  // Layout 那个顶层路由的 children 就是菜单源（/login 是顶层且无 children，天然被排除）
+  const root = router.options.routes.find(r => r.children?.length)
+  return (root?.children || [])
+    .filter(c => c.meta?.title)                                  // 没 title 的不进菜单
+    .filter(c => !c.meta.perm || hasPermission(c.meta.perm))     // 按权限点过滤
+    .map(c => ({
+      // children 里是相对路径（'dashboard'），el-menu 需要绝对路径
+      path: '/' + c.path.replace(/^\//, ''),
+      title: c.meta.title,
+      icon: c.meta.icon
+    }))
+})
 
 const activeMenu = computed(() => route.path)
 const currentTitle = computed(() => route.meta?.title || 'AI-WMS')
+
+// ---------- 用户下拉 ----------
+async function handleCommand(command) {
+  if (command === 'logout') {
+    try {
+      await ElMessageBox.confirm('确认退出登录？', '退出', { type: 'warning' })
+    } catch {
+      return   // 用户点了取消
+    }
+    clearLogin()
+    router.replace('/login')
+  } else if (command === 'change-password') {
+    openChangePassword()
+  }
+}
+
+// ---------- 修改密码 ----------
+const pwdVisible = ref(false)
+const pwdSubmitting = ref(false)
+const pwdForm = reactive({ oldPassword: '', newPassword: '', confirmPassword: '' })
+
+function openChangePassword() {
+  pwdForm.oldPassword = ''
+  pwdForm.newPassword = ''
+  pwdForm.confirmPassword = ''
+  pwdVisible.value = true
+}
+
+async function submitChangePassword() {
+  if (!pwdForm.oldPassword || !pwdForm.newPassword) {
+    ElMessage.warning('请填写原密码和新密码')
+    return
+  }
+  if (pwdForm.newPassword.length < 6) {
+    ElMessage.warning('新密码长度不能少于 6 位')
+    return
+  }
+  if (pwdForm.newPassword !== pwdForm.confirmPassword) {
+    ElMessage.warning('两次输入的新密码不一致')
+    return
+  }
+
+  pwdSubmitting.value = true
+  try {
+    await authApi.changePassword({
+      oldPassword: pwdForm.oldPassword,
+      newPassword: pwdForm.newPassword
+    })
+    pwdVisible.value = false
+    ElMessage.success('密码修改成功，请用新密码重新登录')
+    // 服务端已撤销旧令牌，下一个请求本来就会 401；
+    // 这里主动清凭证跳转是为了体验，而不是让人莫名其妙被踢出去
+    clearLogin()
+    router.replace('/login')
+  } finally {
+    pwdSubmitting.value = false
+  }
+}
 </script>
 
 <style scoped>

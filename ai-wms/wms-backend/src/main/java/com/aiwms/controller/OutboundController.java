@@ -1,8 +1,8 @@
 package com.aiwms.controller;
 
-import com.aiwms.common.RequireRole;
+import com.aiwms.common.Permissions;
+import com.aiwms.common.RequirePermission;
 import com.aiwms.common.Result;
-import com.aiwms.common.Roles;
 import com.aiwms.dto.AllocateResultVO;
 import com.aiwms.dto.AllocationVO;
 import com.aiwms.dto.OutboundCreateRequest;
@@ -49,7 +49,7 @@ public class OutboundController {
      * <p>POST /api/outbound-orders
      */
     @PostMapping
-    @RequireRole(Roles.ADMIN)   // 模拟「上游 ERP 推单」，属于管理动作，不对现场岗位开放
+    @RequirePermission(Permissions.OUTBOUND_CREATE)   // 模拟「上游 ERP 推单」，属于管理动作
     public Result<Long> create(@RequestBody @Valid OutboundCreateRequest request) {
         return Result.success("出库单创建成功", outboundService.createOrder(request));
     }
@@ -59,7 +59,7 @@ public class OutboundController {
      * <p>POST /api/outbound-orders/{id}/allocate
      */
     @PostMapping("/{id}/allocate")
-    @RequireRole(Roles.PICKER)
+    @RequirePermission(Permissions.OUTBOUND_ALLOCATE)
     public Result<AllocateResultVO> allocate(@PathVariable Long id) {
         AllocateResultVO result = outboundService.allocate(id);
         return Result.success("库存分配成功", result);
@@ -76,7 +76,7 @@ public class OutboundController {
      * <p><b>业务代码不要调用。</b>
      */
     @PostMapping("/{id}/allocate-naive")
-    @RequireRole(Roles.ADMIN)   // 只想让压测脚本能调，业务岗一律挡住
+    @RequirePermission(Permissions.OUTBOUND_ALLOCATE_NAIVE)   // 只给压测脚本，业务岗别分配
     public Result<Void> allocateNaive(@PathVariable Long id) {
         outboundService.allocateNaive(id);
         return Result.success();

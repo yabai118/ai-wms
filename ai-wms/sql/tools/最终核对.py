@@ -47,7 +47,7 @@ checks = [
     ('location(标准)', "SELECT COUNT(*) FROM ai_wms.location WHERE location_code REGEXP '^[A-Z]-[0-9]+-[0-9]+$'", len(loc)),
     ('location(全部)', 'SELECT COUNT(*) FROM ai_wms.location', None),
     ('customer', 'SELECT COUNT(*) FROM ai_wms.customer', cust_src),
-    ('operator', 'SELECT COUNT(*) FROM ai_wms.operator', None),
+    ('staff', 'SELECT COUNT(*) FROM ai_wms.staff', None),
 ]
 for name, sql, expect in checks:
     got = int(q(sql)[0][0])

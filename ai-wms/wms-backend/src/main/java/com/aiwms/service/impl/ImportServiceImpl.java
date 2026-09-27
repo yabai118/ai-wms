@@ -300,7 +300,7 @@ public class ImportServiceImpl implements ImportService {
                 tx.setReferenceType("INIT");
                 tx.setReferenceId(0L);
                 tx.setRemark("期初库存导入");
-                tx.setCreatedBy(UserContext.usernameOr("import"));
+                tx.setCreatedBy(UserContext.staffCodeOr("import"));
                 transactionMapper.insert(tx);
             }
 

@@ -120,7 +120,7 @@ public class InboundServiceImpl implements InboundService {
         order.setStatus(0);                       // 待收货
         order.setExpectedDate(request.getExpectedDate());
         order.setRemark(request.getRemark());
-        order.setCreatedBy(UserContext.usernameOr("system"));
+        order.setCreatedBy(UserContext.staffCodeOr("system"));
         orderMapper.insert(order);
 
         for (InboundCreateRequest.Line l : request.getLines()) {
@@ -250,7 +250,7 @@ public class InboundServiceImpl implements InboundService {
             tx.setReferenceType("INBOUND_ORDER");
             tx.setReferenceId(orderId);
             tx.setRemark("入库上架: " + order.getOrderNo() + " / 明细 " + line.getId());
-            tx.setCreatedBy(UserContext.usernameOr("system"));
+            tx.setCreatedBy(UserContext.staffCodeOr("system"));
             transactionMapper.insert(tx);
 
             // ⑤ 更新货位占用

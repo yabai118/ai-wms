@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 从鞋厂数据集生成【基础数据】的 INSERT SQL
-生成：product / product_sku / warehouse_area / location / customer / operator
+生成：product / product_sku / warehouse_area / location / customer / staff
 
 ★ 已应用数据质量修正（见 ../数据质量问题与处理.md）：
   1. Size (US) 格式混用：>20 的值 ÷10 还原（85 -> 8.5）
@@ -68,7 +68,7 @@ def write_batch(f, table, cols, rows, batch=500):
 with open(OUT, 'w', encoding='utf-8') as f:
     f.write("USE ai_wms;\nSET NAMES utf8mb4;\n\n")
     f.write("-- 清空（可重复执行）\n")
-    for t in ['product_sku', 'product', 'warehouse_area', 'location', 'customer', 'operator']:
+    for t in ['product_sku', 'product', 'warehouse_area', 'location', 'customer', 'staff']:
         f.write(f"DELETE FROM {t};\n")
     f.write("\n")
 
@@ -167,10 +167,12 @@ with open(OUT, 'w', encoding='utf-8') as f:
     rows = [[i + 1, esc(c), esc(c)] for i, c in enumerate(custs)]
     write_batch(f, 'customer', ['id', 'cust_code', 'cust_name'], rows)
 
-    # ---------- 6. 拣货员（订单表 + 波次表并集）----------
+    # ---------- 6. 员工档案（订单表 + 波次表并集）----------
+    # 注：数据集里这一列叫 operator，抽出来的值形如 Operator_1；
+    #     在系统里它是「员工档案」表，工号同时是登录名。
     ops = sorted(set(order['operator'].dropna().astype(str).str.strip()) |
                  set(wv['operator'].dropna().astype(str).str.strip()))
     rows = [[i + 1, esc(o), esc(o)] for i, o in enumerate(ops)]
-    write_batch(f, 'operator', ['id', 'op_code', 'op_name'], rows)
+    write_batch(f, 'staff', ['id', 'staff_code', 'staff_name'], rows)
 
 print(f'\n已生成: {OUT}  (%.1f KB)' % (os.path.getsize(OUT) / 1024))

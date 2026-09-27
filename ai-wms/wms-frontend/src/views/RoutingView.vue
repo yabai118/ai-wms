@@ -21,10 +21,12 @@
             <el-button type="primary" size="small" :loading="loading" @click="load">
               <el-icon><Refresh /></el-icon> 重新优化
             </el-button>
-            <el-button type="success" size="small" :disabled="!result" @click="applySequence">
+            <el-button v-if="hasPermission('wave:sequence')" type="success" size="small"
+                       :disabled="!result" @click="applySequence">
               <el-icon><Check /></el-icon> 应用到拣货任务
             </el-button>
-            <el-button size="small" :disabled="!result" @click="clearSequence">
+            <el-button v-if="hasPermission('wave:sequence')" size="small"
+                       :disabled="!result" @click="clearSequence">
               清除顺序
             </el-button>
           </div>
@@ -123,6 +125,7 @@ import * as echarts from 'echarts'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { agentApi } from '@/api/agent'
 import { waveApi } from '@/api/wave'
+import { hasPermission } from '@/utils/permission'
 
 /* 配色：与项目其它图表一致，已通过 dataviz 验证脚本 */
 const C = {

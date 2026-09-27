@@ -137,7 +137,7 @@ def anomaly_fallback(anomaly_type: str, detail: dict) -> str:
     templates = {
         "PICK_TIMEOUT": "拣货任务超时未完成。建议：检查拣货员是否遇到缺货或库位异常，"
                         "必要时重新分配任务。",
-        "SLOW_OPERATOR": "该拣货员作业耗时明显高于平均水平。建议：检查其负责的库位"
+        "SLOW_STAFF": "该拣货员作业耗时明显高于平均水平。建议：检查其负责的库位"
                          "是否集中在仓库深处，或核实是否有异常情况。",
         "STOCK_MISMATCH": "账实数量不一致。建议：安排盘点核实，检查是否有未记录的出入库操作。",
         "LOW_STOCK": "库存低于安全水位。建议：尽快补货，避免影响后续订单履约。",

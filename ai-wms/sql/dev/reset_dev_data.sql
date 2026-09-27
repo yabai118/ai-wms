@@ -15,7 +15,7 @@
 --     DROP DATABASE，会把整个库连同主数据一起删掉。
 --
 --  保留（真实主数据，来自数据集，不要动）：
---    warehouse_area / location / product / product_sku / customer / operator
+--    warehouse_area / location / product / product_sku / customer / staff
 --
 --  清空（业务流水）：
 --    入库 / 出库 / 波次 / 拣货 / 发货 / 库存 / 盘点 / 预警
@@ -81,7 +81,7 @@ UNION ALL SELECT '保留', 'product',       COUNT(*) FROM product
 UNION ALL SELECT '保留', 'product_sku',   COUNT(*) FROM product_sku
 UNION ALL SELECT '保留', 'warehouse_area',COUNT(*) FROM warehouse_area
 UNION ALL SELECT '保留', 'customer',      COUNT(*) FROM customer
-UNION ALL SELECT '保留', 'operator',      COUNT(*) FROM operator
+UNION ALL SELECT '保留', 'staff',         COUNT(*) FROM staff
 UNION ALL SELECT '清空', 'inbound_order',        COUNT(*) FROM inbound_order
 UNION ALL SELECT '清空', 'outbound_order',       COUNT(*) FROM outbound_order
 UNION ALL SELECT '清空', 'picking_wave',         COUNT(*) FROM picking_wave

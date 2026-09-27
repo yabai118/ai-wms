@@ -22,7 +22,8 @@ public class PickingWave {
 
     private String waveNo;
 
-    private Long operatorId;
+    /** 拣货员（staff.id）—— 生成波次时从当前登录用户取，不接受前端传参 */
+    private Long staffId;
 
     /** 0待拣货 1拣货中 2已完成 */
     private Integer status;

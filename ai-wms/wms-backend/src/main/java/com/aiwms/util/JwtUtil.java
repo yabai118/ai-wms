@@ -1,6 +1,7 @@
 package com.aiwms.util;
 
 import com.aiwms.common.UserContext;
+import com.aiwms.entity.Staff;
 import com.aiwms.entity.SysUser;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
@@ -37,22 +38,27 @@ public class JwtUtil {
         this.expireHours = expireHours;
     }
 
-    /** 签发 token */
-    public String sign(SysUser user) {
+    /**
+     * 签发 token
+     *
+     * <p>登录名（subject）与显示名（claim {@code name}）都来自 <b>员工档案</b>——
+     * 账号表里已经不再存这两个字段了。
+     *
+     * @param user  账号（提供 id / 角色 / 关联员工）
+     * @param staff 该账号关联的员工（提供工号与姓名）
+     */
+    public String sign(SysUser user, Staff staff) {
         Instant now = Instant.now();
-        var builder = Jwts.builder()
-                .subject(user.getUsername())
+        return Jwts.builder()
+                .subject(staff.getStaffCode())          // 工号就是登录名
                 .claim("uid", user.getId())
-                .claim("name", user.getDisplayName())
+                .claim("sid", staff.getId())
+                .claim("name", staff.getStaffName())
                 .claim("role", user.getRole())
                 .issuedAt(Date.from(now))
-                .expiration(Date.from(now.plus(expireHours, ChronoUnit.HOURS)));
-
-        // 管理岗没有关联的作业人员，此时不放这个 claim（而不是放一个 null）
-        if (user.getOperatorId() != null) {
-            builder.claim("oid", user.getOperatorId());
-        }
-        return builder.signWith(key).compact();
+                .expiration(Date.from(now.plus(expireHours, ChronoUnit.HOURS)))
+                .signWith(key)
+                .compact();
     }
 
     /**
@@ -69,9 +75,10 @@ public class JwtUtil {
 
         return new UserContext.CurrentUser(
                 c.get("uid", Long.class),
-                c.getSubject(),
-                c.get("name", String.class),
+                c.get("sid", Long.class),
+                c.getSubject(),                          // 工号
+                c.get("name", String.class),             // 姓名
                 c.get("role", String.class),
-                c.get("oid", Long.class));
+                c.getIssuedAt() == null ? null : c.getIssuedAt().getTime() / 1000);
     }
 }

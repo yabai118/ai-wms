@@ -8,7 +8,8 @@
             <span style="font-weight:600">入库管理</span>
             <el-tag size="small" type="info" effect="plain">共 {{ total }} 个入库单</el-tag>
           </div>
-          <el-button type="primary" size="small" @click="openCreate">
+          <el-button v-if="hasPermission('inbound:create')" type="primary" size="small"
+                     @click="openCreate">
             <el-icon><Plus /></el-icon> 创建入库单
           </el-button>
         </div>
@@ -55,9 +56,11 @@
         <el-table-column label="操作" width="200" align="center">
           <template #default="{ row }">
             <el-button link type="primary" size="small" @click="showDetail(row)">详情</el-button>
-            <el-button v-if="row.status === 0" link type="warning" size="small"
+            <el-button v-if="row.status === 0 && hasPermission('inbound:receive')"
+                       link type="warning" size="small"
                        @click="openReceive(row)">收货</el-button>
-            <el-button v-if="row.status === 1" link type="success" size="small"
+            <el-button v-if="row.status === 1 && hasPermission('inbound:shelve')"
+                       link type="success" size="small"
                        @click="openShelve(row)">上架</el-button>
           </template>
         </el-table-column>
@@ -215,6 +218,7 @@ import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { inboundApi } from '@/api/inbound'
 import { skuApi } from '@/api/sku'
+import { hasPermission } from '@/utils/permission'
 
 const loading = ref(false)
 const submitting = ref(false)

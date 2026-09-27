@@ -17,11 +17,16 @@ export function getToken() {
 export function setLogin(loginVO) {
   localStorage.setItem(TOKEN_KEY, loginVO.token)
   localStorage.setItem(USER_KEY, JSON.stringify({
-    username: loginVO.username,
-    displayName: loginVO.displayName,
+    // 登录名就是工号，显示名就是姓名 —— 账号表里没有单独的这两个字段，
+    // 它们都来自员工档案
+    staffId: loginVO.staffId,
+    staffCode: loginVO.staffCode,
+    staffName: loginVO.staffName,
     role: loginVO.role,
     roleName: loginVO.roleName,
-    operatorId: loginVO.operatorId
+    // ★ 权限点由后端下发（表驱动）——前端菜单和按钮据此渲染，
+    //   所以后端加一个新角色时，前端一行都不用改
+    permissions: loginVO.permissions || []
   }))
 }
 
@@ -32,6 +37,11 @@ export function getUser() {
   } catch {
     return {}
   }
+}
+
+/** 取当前用户的权限点集合 */
+export function getPermissions() {
+  return getUser().permissions || []
 }
 
 /** 退出登录 / token 失效时清除 */

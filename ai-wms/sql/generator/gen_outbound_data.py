@@ -9,7 +9,7 @@
   Reference + 尺码还原 -> product_sku.sku_code
   waveNumber          -> picking_wave.wave_no
   locations           -> location.location_code
-  operator            -> operator.op_code
+  operator（数据集列名）-> staff.staff_code
 """
 import pandas as pd
 import numpy as np
@@ -64,8 +64,8 @@ print('读取数据库 ID 映射...')
 cust_map = {r[0]: int(r[1]) for r in q("SELECT cust_code, id FROM ai_wms.customer")}
 sku_map = {r[0]: int(r[1]) for r in q("SELECT sku_code, id FROM ai_wms.product_sku")}
 loc_map = {r[0]: int(r[1]) for r in q("SELECT location_code, id FROM ai_wms.location")}
-op_map = {r[0]: int(r[1]) for r in q("SELECT op_code, id FROM ai_wms.operator")}
-print('  客户 %d / SKU %d / 库位 %d / 拣货员 %d'
+op_map = {r[0]: int(r[1]) for r in q("SELECT staff_code, id FROM ai_wms.staff")}
+print('  客户 %d / SKU %d / 库位 %d / 员工 %d'
       % (len(cust_map), len(sku_map), len(loc_map), len(op_map)))
 
 # ============ 读源数据 ============
@@ -141,7 +141,7 @@ with open(OUT, 'w', encoding='utf-8') as f:
         rows.append([wid, esc(str(wn)), op_map.get(op),
                      int(task_cnt.get(wn, 0)), int(qty)])
     write_batch(f, 'picking_wave',
-                ['id', 'wave_no', 'operator_id', 'total_tasks', 'total_qty'], rows)
+                ['id', 'wave_no', 'staff_id', 'total_tasks', 'total_qty'], rows)
 
     # ---------- 5. picking_task ----------
     rows = []

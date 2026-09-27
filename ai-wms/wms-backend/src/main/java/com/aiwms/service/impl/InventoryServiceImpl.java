@@ -264,7 +264,7 @@ public class InventoryServiceImpl implements InventoryService {
         tx.setReferenceType(refType);
         tx.setReferenceId(refId);
         tx.setRemark(remark);
-        tx.setCreatedBy(UserContext.usernameOr("system"));
+        tx.setCreatedBy(UserContext.staffCodeOr("system"));
         transactionMapper.insert(tx);
     }
 

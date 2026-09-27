@@ -8,7 +8,8 @@
             <span style="font-weight:600">出库管理</span>
             <el-tag size="small" type="info" effect="plain">共 {{ total }} 个订单</el-tag>
           </div>
-          <el-button type="primary" size="small" @click="openCreate">
+          <el-button v-if="hasPermission('outbound:create')" type="primary" size="small"
+                     @click="openCreate">
             <el-icon><Plus /></el-icon> 新建出库单
           </el-button>
         </div>
@@ -58,7 +59,8 @@
         <el-table-column label="操作" width="180" align="center">
           <template #default="{ row }">
             <el-button link type="primary" size="small" @click="showDetail(row)">详情</el-button>
-            <el-button v-if="row.status === 0" link type="success" size="small"
+            <el-button v-if="row.status === 0 && hasPermission('outbound:allocate')"
+                       link type="success" size="small"
                        @click="doAllocate(row)">分配库存</el-button>
           </template>
         </el-table-column>
@@ -186,6 +188,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { outboundApi, exportOrdersUrl } from '@/api/outbound'
 import { customerApi } from '@/api/customer'
 import { skuApi } from '@/api/sku'
+import { hasPermission } from '@/utils/permission'
 
 const loading = ref(false)
 const submitting = ref(false)

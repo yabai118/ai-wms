@@ -1,8 +1,8 @@
 package com.aiwms.controller;
 
-import com.aiwms.common.RequireRole;
+import com.aiwms.common.Permissions;
+import com.aiwms.common.RequirePermission;
 import com.aiwms.common.Result;
-import com.aiwms.common.Roles;
 import com.aiwms.dto.PickingTaskVO;
 import com.aiwms.dto.WaveGenerateRequest;
 import com.aiwms.dto.WaveQuery;
@@ -49,7 +49,7 @@ public class WaveController {
      * <p>POST /api/waves/generate
      */
     @PostMapping("/generate")
-    @RequireRole(Roles.PICKER)
+    @RequirePermission(Permissions.WAVE_GENERATE)
     public Result<WaveVO> generate(@RequestBody @Valid WaveGenerateRequest request) {
         return Result.success("波次生成成功", waveService.generateWave(request));
     }
@@ -59,7 +59,7 @@ public class WaveController {
      * <p>POST /api/waves/{id}/pick
      */
     @PostMapping("/{id}/pick")
-    @RequireRole(Roles.PICKER)
+    @RequirePermission(Permissions.WAVE_PICK)
     public Result<Void> pick(@PathVariable Long id) {
         waveService.pickWave(id);
         return Result.success("拣货完成", null);
@@ -70,7 +70,7 @@ public class WaveController {
      * <p>POST /api/waves/{id}/ship
      */
     @PostMapping("/{id}/ship")
-    @RequireRole(Roles.PICKER)
+    @RequirePermission(Permissions.WAVE_SHIP)
     public Result<Void> ship(@PathVariable Long id) {
         waveService.shipWave(id);
         return Result.success("发货完成，库存已扣减", null);
@@ -86,7 +86,7 @@ public class WaveController {
      * <p>算法服务只读，算出顺序后由前端调本接口落库
      */
     @PostMapping("/{id}/sequence")
-    @RequireRole(Roles.PICKER)
+    @RequirePermission(Permissions.WAVE_SEQUENCE)
     public Result<Void> applySequence(@PathVariable Long id,
                                       @RequestBody WaveSequenceRequest request) {
         waveService.applySequence(id, request.getTaskIds());

@@ -8,7 +8,8 @@
             <span style="font-weight:600">波次与拣货</span>
             <el-tag size="small" type="info" effect="plain">共 {{ total }} 个波次</el-tag>
           </div>
-          <el-button type="primary" size="small" @click="openGenerate">
+          <el-button v-if="hasPermission('wave:generate')" type="primary" size="small"
+                     @click="openGenerate">
             <el-icon><Plus /></el-icon> 生成波次
           </el-button>
         </div>
@@ -54,8 +55,8 @@
             {{ row.totalQty }} / {{ row.capacity }}
           </template>
         </el-table-column>
-        <el-table-column prop="operatorName" label="拣货员" width="120" align="center">
-          <template #default="{ row }">{{ row.operatorName || '-' }}</template>
+        <el-table-column prop="staffName" label="拣货员" width="140" align="center">
+          <template #default="{ row }">{{ row.staffName || '-' }}</template>
         </el-table-column>
         <el-table-column prop="pathDistance" label="行走距离" width="110" align="center">
           <template #default="{ row }">
@@ -66,9 +67,11 @@
         <el-table-column label="操作" width="200" align="center">
           <template #default="{ row }">
             <el-button link type="primary" size="small" @click="showDetail(row)">详情</el-button>
-            <el-button v-if="row.status === 0" link type="warning" size="small"
+            <el-button v-if="row.status === 0 && hasPermission('wave:pick')"
+                       link type="warning" size="small"
                        @click="doPick(row)">拣货</el-button>
-            <el-button v-if="row.status === 1" link type="success" size="small"
+            <el-button v-if="row.status === 1 && hasPermission('wave:ship')"
+                       link type="success" size="small"
                        @click="doShip(row)">发货</el-button>
           </template>
         </el-table-column>
@@ -171,6 +174,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { waveApi, exportPickTasksUrl } from '@/api/wave'
 import { outboundApi } from '@/api/outbound'
+import { hasPermission } from '@/utils/permission'
 
 const loading = ref(false)
 const submitting = ref(false)

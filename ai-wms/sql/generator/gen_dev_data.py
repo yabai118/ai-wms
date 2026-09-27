@@ -2,7 +2,7 @@
 """
 生成【开发环境 · 自造主数据】的 SQL
 
-生成：product / product_sku / customer / operator
+生成：product / product_sku / customer / staff
 ★ 保留：location / warehouse_area —— 真实仓库布局，绝不改动
 
 ## 为什么要有这个脚本
@@ -14,16 +14,26 @@
   ① `routing.py` 里 AISLE_YS / CROSS_AISLES / 起点是硬编码常量，依赖真实坐标
   ② 仓库的物理结构本来就不该变 —— 变的是每天进出的货
 
-商品、SKU、客户、作业人员全部自造，且**用中文业务名**，演示时像个真实业务系统。
+商品、SKU、客户、员工全部自造，且**用中文业务名**，演示时像个真实业务系统。
+
+## ★ 员工档案（staff）为什么包含管理岗
+
+改完账号模型后，**每个账号都必须关联一个员工**（staff_id NOT NULL）——
+包括管理员。理由是追责：管理员权限最大，出了问题必须查得到是谁在操作。
+
+所以 staff 表里既有现场作业人员，也有管理岗。
+
+（对接 ERP / 物流的**集成账号**不适用这条规则，将来走 API Key 独立通道，
+  根本不进 sys_user 表。见 项目设计方案.md 10.4 节）
 
 ## 用法
 
-    python sql/generator/gen_dev_data.py              # 生成 sql/dev/dev_data.sql
+    python sql/generator/gen_dev_data.py                    # 生成 sql/dev/dev_data.sql
     mysql -u root -p"$DB_PASSWORD" < sql/dev/dev_data.sql   # 执行
 
 ## 数据规模（精简档）
 
-    商品款 20 个 / SKU 156 个 / 客户 20 个 / 作业人员 10 人
+    商品款 20 个 / SKU 156 个 / 客户 20 个 / 员工 13 人
 
 ## 可复现
 
@@ -103,11 +113,20 @@ CUSTOMERS = [
 ]
 
 # =====================================================================
-#  三、作业人员（10 人）
-#     这是「现场作业人员档案」——谁在仓库里干活。
-#     与「登录账号」（sys_user）分开，账号通过 operator_id 关联到人。
+#  三、员工档案（13 人）
+#
+#  ★ 工号同时是登录名 —— 不再单独发一个"登录名"，那会凭空多一层映射。
+#  ★ 姓名同时是显示名 —— 不再单独存"显示名"，那是同一份数据存两遍。
+#
+#  包含管理岗，因为账号与员工是一对一的强制关系（含管理员，理由见文件头）。
 # =====================================================================
-OPERATORS = [
+STAFF = [
+    # ---------- 管理岗（3 人）----------
+    # 编号用 MG 前缀，和现场作业人员（OP）区分开，一眼能看出岗位性质
+    ('MG001', '陈志远'),   # 系统管理员
+    ('MG002', '林晓'),     # 收货主管
+    ('MG003', '黄建国'),   # 仓库主管
+    # ---------- 现场作业人员（10 人）----------
     ('OP001', '张伟'),
     ('OP002', '李娜'),
     ('OP003', '王强'),
@@ -119,6 +138,27 @@ OPERATORS = [
     ('OP009', '周涛'),
     ('OP010', '吴倩'),
 ]
+
+
+# =====================================================================
+#  四、演示账号（4 个）
+#
+#  ★ 账号与员工一对一：登录名 = 工号，显示名 = 姓名，都不在这里填。
+#    所以这里只需要说「哪个人 + 什么角色」。
+#
+#  ⚠️ 所有演示账号的初始密码都是 WMS_DEMO_PASSWORD（见 ai-wms/.env.local），
+#     哈希写死在下面的 DEMO_PASSWORD_HASH 里。
+#     这是**刻意公开**的演示密码（登录页上就写着），生产环境必须首登强制改密。
+# =====================================================================
+ACCOUNTS = [
+    ('MG001', 'ADMIN',      '系统管理员'),
+    ('MG002', 'RECEIVER',   '收货员'),
+    ('MG003', 'SUPERVISOR', '仓库主管'),
+    ('OP001', 'PICKER',     '拣货员'),
+]
+
+# BCrypt 哈希，对应明文 123456（Python bcrypt 生成，Spring 的 BCryptPasswordEncoder 能验）
+DEMO_PASSWORD_HASH = '$2b$10$x/FFUt5O.diJONTILwBozOxw4surUDo5mFBQmzzcc.QdmoWLMAmZi'
 
 
 def esc(s):
@@ -134,25 +174,28 @@ def main():
     w("--  AI-WMS 开发环境 · 自造主数据")
     w("--  由 sql/generator/gen_dev_data.py 生成 —— 不要手工编辑")
     w("--")
-    w("--  生成：product / product_sku / customer / operator")
+    w("--  生成：product / product_sku / customer / staff")
     w("--  保留：location / warehouse_area（真实仓库布局，本脚本不碰）")
     w("--")
-    w("--  规模：商品款 %d / SKU %d / 客户 %d / 作业人员 %d"
-      % (len(PRODUCTS), _sku_count(), len(CUSTOMERS), len(OPERATORS)))
+    w("--  规模：商品款 %d / SKU %d / 客户 %d / 员工 %d"
+      % (len(PRODUCTS), _sku_count(), len(CUSTOMERS), len(STAFF)))
     w("-- =====================================================================")
     w("")
     w("USE ai_wms;")
     w("SET NAMES utf8mb4;")
     w("")
     w("-- 先清掉旧的主数据（子表在前）")
+    w("-- ⚠️ sys_user 必须先清：它的 staff_id 指向 staff，且有唯一约束")
+    w("DELETE FROM sys_user;")
     w("DELETE FROM product_sku;")
     w("DELETE FROM product;")
     w("DELETE FROM customer;")
-    w("DELETE FROM operator;")
+    w("DELETE FROM staff;")
     w("ALTER TABLE product      AUTO_INCREMENT = 1;")
     w("ALTER TABLE product_sku  AUTO_INCREMENT = 1;")
     w("ALTER TABLE customer     AUTO_INCREMENT = 1;")
-    w("ALTER TABLE operator     AUTO_INCREMENT = 1;")
+    w("ALTER TABLE staff        AUTO_INCREMENT = 1;")
+    w("ALTER TABLE sys_user     AUTO_INCREMENT = 1;")
     w("")
 
     # ---------- 商品款 ----------
@@ -185,11 +228,26 @@ def main():
           "VALUES (%d, '%s', '%s');" % (i, esc(code), esc(name)))
     w("")
 
-    # ---------- 作业人员 ----------
-    w("-- ---------- 作业人员（%d 人）----------" % len(OPERATORS))
-    for i, (code, name) in enumerate(OPERATORS, start=1):
-        w("INSERT INTO operator (id, op_code, op_name) "
+    # ---------- 员工档案 ----------
+    w("-- ---------- 员工档案（%d 人）----------" % len(STAFF))
+    for i, (code, name) in enumerate(STAFF, start=1):
+        w("INSERT INTO staff (id, staff_code, staff_name) "
           "VALUES (%d, '%s', '%s');" % (i, esc(code), esc(name)))
+    w("")
+
+    # ---------- 演示账号 ----------
+    staff_id_by_code = {code: i for i, (code, _) in enumerate(STAFF, start=1)}
+    w("-- ---------- 演示账号（%d 个）----------" % len(ACCOUNTS))
+    w("-- 登录名 = 工号，显示名 = 姓名，都取自 staff 表，所以这里只记「人 + 角色」")
+    for code, role, _label in ACCOUNTS:
+        w("INSERT INTO sys_user (staff_id, password, role, status) "
+          "VALUES (%d, '%s', '%s', 1);"
+          % (staff_id_by_code[code], DEMO_PASSWORD_HASH, esc(role)))
+    w("")
+    w("-- 演示账号（登录名 = 工号，密码见 ai-wms/.env.local 的 WMS_DEMO_PASSWORD）：")
+    for code, role, label in ACCOUNTS:
+        name = dict(STAFF)[code]
+        w("--   %s %s  →  %s" % (code, name, label))
     w("")
 
     # ---------- 核对 ----------
@@ -197,7 +255,8 @@ def main():
     w("SELECT 'product' AS 表, COUNT(*) AS 行数 FROM product")
     w("UNION ALL SELECT 'product_sku', COUNT(*) FROM product_sku")
     w("UNION ALL SELECT 'customer',    COUNT(*) FROM customer")
-    w("UNION ALL SELECT 'operator',    COUNT(*) FROM operator")
+    w("UNION ALL SELECT 'staff',       COUNT(*) FROM staff")
+    w("UNION ALL SELECT 'sys_user',    COUNT(*) FROM sys_user")
     w("UNION ALL SELECT 'location（应保持不变）', COUNT(*) FROM location;")
 
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
@@ -205,8 +264,8 @@ def main():
         f.write("\n".join(lines) + "\n")
 
     print("已生成：%s" % os.path.abspath(OUT))
-    print("  商品款 %d / SKU %d / 客户 %d / 作业人员 %d"
-          % (len(PRODUCTS), len(sku_rows), len(CUSTOMERS), len(OPERATORS)))
+    print("  商品款 %d / SKU %d / 客户 %d / 员工 %d"
+          % (len(PRODUCTS), len(sku_rows), len(CUSTOMERS), len(STAFF)))
     print("  location / warehouse_area 未被改动")
 
 

@@ -21,7 +21,7 @@ public interface DashboardMapper {
               (SELECT COUNT(*) FROM product_sku)                      AS skuCount,
               (SELECT COUNT(*) FROM location)                         AS locationCount,
               (SELECT COUNT(*) FROM customer)                         AS customerCount,
-              (SELECT COUNT(*) FROM operator)                         AS operatorCount,
+              (SELECT COUNT(*) FROM staff)                            AS staffCount,
               (SELECT COUNT(*) FROM outbound_order)                   AS orderCount,
               (SELECT COUNT(*) FROM picking_wave)                     AS waveCount,
               (SELECT COUNT(*) FROM inbound_order)                    AS inboundCount,

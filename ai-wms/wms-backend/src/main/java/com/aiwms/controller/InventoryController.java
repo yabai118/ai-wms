@@ -1,8 +1,8 @@
 package com.aiwms.controller;
 
-import com.aiwms.common.RequireRole;
+import com.aiwms.common.Permissions;
+import com.aiwms.common.RequirePermission;
 import com.aiwms.common.Result;
-import com.aiwms.common.Roles;
 import com.aiwms.dto.InventoryQuery;
 import com.aiwms.dto.InventoryTransactionVO;
 import com.aiwms.dto.InventoryVO;
@@ -84,7 +84,7 @@ public class InventoryController {
      * <p>POST /api/inventory/{id}/freeze?qty=10&reason=质检不合格
      */
     @PostMapping("/{id}/freeze")
-    @RequireRole(Roles.ADMIN)
+    @RequirePermission(Permissions.INVENTORY_FREEZE)
     public Result<Void> freeze(@PathVariable Long id,
                                @RequestParam Integer qty,
                                @RequestParam(required = false) String reason) {
@@ -97,7 +97,7 @@ public class InventoryController {
      * <p>POST /api/inventory/{id}/unfreeze?qty=10
      */
     @PostMapping("/{id}/unfreeze")
-    @RequireRole(Roles.ADMIN)
+    @RequirePermission(Permissions.INVENTORY_UNFREEZE)
     public Result<Void> unfreeze(@PathVariable Long id, @RequestParam Integer qty) {
         inventoryService.unfreeze(id, qty);
         return Result.success("解冻成功", null);

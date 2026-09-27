@@ -10,8 +10,10 @@ public class WaveVO {
 
     private Long id;
     private String waveNo;
-    private Long operatorId;
-    private String operatorName;
+    /** 拣货员（员工 id） */
+    private Long staffId;
+    /** 拣货员「工号 姓名」，如「OP001 张伟」 */
+    private String staffName;
     private Integer status;
     private String statusName;
     private Integer capacity;

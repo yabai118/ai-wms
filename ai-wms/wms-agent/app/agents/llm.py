@@ -64,8 +64,8 @@ TOOLS = [
     {
         "type": "function",
         "function": {
-            "name": "query_operator_performance",
-            "description": "查询拣货员的作业效率排名（按处理的波次数量）",
+            "name": "query_staff_performance",
+            "description": "查询员工的作业效率排名（按处理的波次数量）",
             "parameters": {"type": "object", "properties": {}, "required": []},
         },
     },
@@ -125,14 +125,16 @@ def _tool_query_inventory(sku_code: str) -> List[Dict[str, Any]]:
             return cur.fetchall()
 
 
-def _tool_query_operator_performance() -> List[Dict[str, Any]]:
+def _tool_query_staff_performance() -> List[Dict[str, Any]]:
     from app.clients.db import get_conn
+    # ⚠️ 表名/列名：operator → staff，op_name → staff_name，operator_id → staff_id
+    #    （sql/migration/03 做过一次改名，这里曾漏改，工具一被调用就会报"表不存在"）
     sql = """
-        SELECT o.op_name AS operator, COUNT(*) AS waveCount
+        SELECT s.staff_code AS staffCode, s.staff_name AS staffName, COUNT(*) AS waveCount
         FROM picking_wave w
-        JOIN operator o ON o.id = w.operator_id
-        WHERE w.operator_id IS NOT NULL
-        GROUP BY o.id, o.op_name
+        JOIN staff s ON s.id = w.staff_id
+        WHERE w.staff_id IS NOT NULL
+        GROUP BY s.id, s.staff_code, s.staff_name
         ORDER BY waveCount ASC
         LIMIT 10
     """
@@ -162,7 +164,7 @@ def _tool_query_low_stock(threshold: int = 20) -> List[Dict[str, Any]]:
 TOOL_IMPL = {
     "query_warehouse_stats": lambda args: _tool_query_warehouse_stats(),
     "query_inventory": lambda args: _tool_query_inventory(args.get("skuCode", "")),
-    "query_operator_performance": lambda args: _tool_query_operator_performance(),
+    "query_staff_performance": lambda args: _tool_query_staff_performance(),
     "query_low_stock": lambda args: _tool_query_low_stock(args.get("threshold", 20)),
 }
 

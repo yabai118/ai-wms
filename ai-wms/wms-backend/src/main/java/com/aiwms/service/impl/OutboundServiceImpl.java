@@ -221,7 +221,7 @@ public class OutboundServiceImpl implements OutboundService {
                 tx.setReferenceId(orderId);
                 tx.setRemark("订单分配: " + order.getOrderNo() + " / 明细 " + line.getId()
                         + " / 分配 " + alloc + " 件");
-                tx.setCreatedBy(UserContext.usernameOr("system"));
+                tx.setCreatedBy(UserContext.staffCodeOr("system"));
                 transactionMapper.insert(tx);
 
                 need -= alloc;

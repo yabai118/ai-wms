@@ -42,8 +42,8 @@ rels = [
      "SELECT COUNT(*) FROM ai_wms.outbound_order_line l LEFT JOIN ai_wms.outbound_order o ON l.order_id=o.id WHERE o.id IS NULL"),
     ('outbound_order_line.sku_id',
      "SELECT COUNT(*) FROM ai_wms.outbound_order_line l LEFT JOIN ai_wms.product_sku s ON l.sku_id=s.id WHERE s.id IS NULL"),
-    ('picking_wave.operator_id',
-     "SELECT COUNT(*) FROM ai_wms.picking_wave w LEFT JOIN ai_wms.operator p ON w.operator_id=p.id WHERE w.operator_id IS NOT NULL AND p.id IS NULL"),
+    ('picking_wave.staff_id',
+     "SELECT COUNT(*) FROM ai_wms.picking_wave w LEFT JOIN ai_wms.staff s ON w.staff_id=s.id WHERE w.staff_id IS NOT NULL AND s.id IS NULL"),
     ('picking_task.wave_id',
      "SELECT COUNT(*) FROM ai_wms.picking_task t LEFT JOIN ai_wms.picking_wave w ON t.wave_id=w.id WHERE w.id IS NULL"),
     ('picking_task.sku_id',
@@ -91,7 +91,7 @@ print('出库单:')
 for row in q("SELECT id, order_no, customer_id, order_time FROM ai_wms.outbound_order ORDER BY id LIMIT 3"):
     print('   ', row)
 print('拣货波次:')
-for row in q("SELECT id, wave_no, operator_id, total_tasks, total_qty FROM ai_wms.picking_wave ORDER BY id LIMIT 3"):
+for row in q("SELECT id, wave_no, staff_id, total_tasks, total_qty FROM ai_wms.picking_wave ORDER BY id LIMIT 3"):
     print('   ', row)
 print('拣货任务:')
 for row in q("""SELECT t.id, w.wave_no, s.sku_code, l.location_code, t.qty_plan

@@ -42,7 +42,7 @@ public class WaveServiceImpl implements WaveService {
     private final InventoryMapper inventoryMapper;
     private final InventoryTransactionMapper transactionMapper;
     private final ProductSkuMapper skuMapper;
-    private final OperatorMapper operatorMapper;
+    private final StaffMapper staffMapper;
     private final ShipmentMapper shipmentMapper;
     private final StockCacheService stockCacheService;
 
@@ -215,7 +215,14 @@ public class WaveServiceImpl implements WaveService {
         // ④ 创建波次
         PickingWave wave = new PickingWave();
         wave.setWaveNo(generateWaveNo());
-        wave.setOperatorId(request.getOperatorId());
+        // ★ 作业人从**当前登录用户**取，不接受前端传参 —— 否则可以冒名。
+        //   这就是「账号关联员工」那根线的用处：单据归到"人"头上，不是"账号"头上。
+        Long staffId = UserContext.staffId();
+        if (staffId == null) {
+            // 兜底：理论上不会发生（账号强制关联员工），但别让波次创建失败
+            staffId = request.getStaffId();
+        }
+        wave.setStaffId(staffId);
         wave.setStatus(0);
         wave.setCapacity(CAPACITY);
         wave.setTotalQty(totalQty);
@@ -318,7 +325,7 @@ public class WaveServiceImpl implements WaveService {
             tx.setReferenceId(waveId);
             tx.setRemark("拣货确认: " + wave.getWaveNo() + " / 库位任务 " + task.getId()
                     + " / " + qty + " 件");
-            tx.setCreatedBy(UserContext.usernameOr("system"));
+            tx.setCreatedBy(UserContext.staffCodeOr("system"));
             transactionMapper.insert(tx);
         }
 
@@ -364,7 +371,7 @@ public class WaveServiceImpl implements WaveService {
             tx.setReferenceType("PICKING_WAVE");
             tx.setReferenceId(waveId);
             tx.setRemark("发货出库: " + wave.getWaveNo() + " / " + qty + " 件");
-            tx.setCreatedBy(UserContext.usernameOr("system"));
+            tx.setCreatedBy(UserContext.staffCodeOr("system"));
             transactionMapper.insert(tx);
 
             totalQty += qty;
@@ -449,10 +456,11 @@ public class WaveServiceImpl implements WaveService {
         WaveVO vo = new WaveVO();
         vo.setId(w.getId());
         vo.setWaveNo(w.getWaveNo());
-        vo.setOperatorId(w.getOperatorId());
-        if (w.getOperatorId() != null) {
-            Operator op = operatorMapper.selectById(w.getOperatorId());
-            vo.setOperatorName(op == null ? null : op.getOpName());
+        vo.setStaffId(w.getStaffId());
+        if (w.getStaffId() != null) {
+            Staff staff = staffMapper.selectById(w.getStaffId());
+            vo.setStaffName(staff == null ? null
+                    : staff.getStaffCode() + " " + staff.getStaffName());
         }
         vo.setStatus(w.getStatus());
         vo.setStatusName(WAVE_STATUS.getOrDefault(w.getStatus(), "未知"));

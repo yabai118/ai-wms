@@ -1,6 +1,7 @@
 package com.aiwms.controller;
 
 import com.aiwms.common.Result;
+import com.aiwms.dto.ChangePasswordRequest;
 import com.aiwms.dto.LoginRequest;
 import com.aiwms.dto.LoginVO;
 import com.aiwms.service.AuthService;
@@ -41,5 +42,18 @@ public class AuthController {
     @GetMapping("/me")
     public Result<LoginVO> me() {
         return Result.success(authService.currentUser());
+    }
+
+    /**
+     * 修改自己的密码
+     * <p>POST /api/auth/change-password
+     *
+     * <p>改的是当前登录的人（用户名从 token 里取，不由请求体传）。
+     * 成功后旧令牌立即失效，前端应清凭证回登录页。
+     */
+    @PostMapping("/change-password")
+    public Result<Void> changePassword(@RequestBody @Valid ChangePasswordRequest request) {
+        authService.changePassword(request);
+        return Result.success("密码修改成功，请重新登录", null);
     }
 }
