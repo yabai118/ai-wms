@@ -1,8 +1,14 @@
 # -*- coding: utf-8 -*-
 """出库数据导入后的完整性核对"""
+import os
 import subprocess
 
-MYSQL = ['mysql', '-u', 'root', '-p123456', '--default-character-set=utf8mb4',
+# 数据库密码从环境变量读——脚本要提交到公开仓库，不能写死密码
+_DB_PWD = os.getenv("DB_PASSWORD")
+if not _DB_PWD:
+    raise SystemExit("未设置环境变量 DB_PASSWORD；先执行：set -a && source ai-wms/.env.local && set +a")
+
+MYSQL = ['mysql', '-u', os.getenv("DB_USER", "root"), '-p' + _DB_PWD, '--default-character-set=utf8mb4',
          '-N', '-B', '-e']
 
 

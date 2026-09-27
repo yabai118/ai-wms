@@ -13,10 +13,12 @@ class Settings(BaseSettings):
     java_base_url: str = "http://localhost:8080/api"
 
     # ---- 数据库（读波次任务、库位坐标） ----
+    # ⚠️ db_password 不设默认值：配置要提交到公开仓库，不能带密码。
+    #    由 .env / 环境变量注入（见 ai-wms/.env.example）。
     db_host: str = "localhost"
     db_port: int = 3306
     db_user: str = "root"
-    db_password: str = "123456"
+    db_password: str = ""
     db_name: str = "ai_wms"
 
     # ---- LLM（可选，未配置时自动降级为规则桩） ----

@@ -8,13 +8,38 @@
   预期：只有 5 个订单成功，其余 15 个因库存不足而失败
   且最终库存不能为负
 """
+import os
 import subprocess
 import requests
 import concurrent.futures
 
-MYSQL = ['mysql', '-u', 'root', '-p123456', '--default-character-set=utf8mb4',
+# 数据库密码从环境变量读——脚本要提交到公开仓库，不能写死密码
+_DB_PWD = os.getenv("DB_PASSWORD")
+if not _DB_PWD:
+    raise SystemExit("未设置环境变量 DB_PASSWORD；先执行：set -a && source ai-wms/.env.local && set +a")
+
+MYSQL = ['mysql', '-u', os.getenv("DB_USER", "root"), '-p' + _DB_PWD, '--default-character-set=utf8mb4',
          '-N', '-B', '-e']
 API = 'http://localhost:8080/api'
+
+# ---------- 登录取 token ----------
+# 系统加了鉴权后，直连 8080 的脚本必须先登录，否则一律 401。
+LOGIN_USER = os.getenv("WMS_DEMO_USER", "admin")
+LOGIN_PWD = os.getenv("WMS_DEMO_PASSWORD")
+if not LOGIN_PWD:
+    raise SystemExit("未设置环境变量 WMS_DEMO_PASSWORD；先执行：set -a && source ai-wms/.env.local && set +a")
+
+
+def login():
+    r = requests.post(f"{API}/auth/login",
+                      json={"username": LOGIN_USER, "password": LOGIN_PWD}, timeout=10)
+    d = r.json()
+    if d.get("code") != 200:
+        raise SystemExit(f"登录失败：{d.get('message')}")
+    return {"Authorization": f"Bearer {d['data']['token']}"}
+
+
+HEADERS = login()
 SKU = '8N10W9-11'
 STOCK = 5
 ORDER_COUNT = 20
@@ -61,7 +86,8 @@ print(f'\n② 并发分配中...')
 
 def allocate(oid):
     try:
-        r = requests.post(f'{API}/outbound-orders/{oid}/allocate', timeout=20)
+        r = requests.post(f'{API}/outbound-orders/{oid}/allocate',
+                          headers=HEADERS, timeout=20)
         j = r.json()
         return oid, j.get('code') == 200, j.get('message', '')
     except Exception as e:

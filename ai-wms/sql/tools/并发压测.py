@@ -27,6 +27,7 @@
 """
 import concurrent.futures
 import json
+import os
 import statistics
 import subprocess
 import sys
@@ -36,7 +37,31 @@ from datetime import datetime
 import requests
 
 API = "http://localhost:8080/api"
-MYSQL = ["mysql", "-u", "root", "-p123456",
+
+# ---------- 登录取 token ----------
+# 系统加了鉴权后，直连 8080 的脚本必须先登录，否则一律 401。
+# 用 admin：它同时能调 /allocate（拣货员岗）和 /allocate-naive（管理员岗）。
+LOGIN_USER = os.getenv("WMS_DEMO_USER", "admin")
+LOGIN_PWD = os.getenv("WMS_DEMO_PASSWORD")
+if not LOGIN_PWD:
+    raise SystemExit("未设置环境变量 WMS_DEMO_PASSWORD；先执行：set -a && source ai-wms/.env.local && set +a")
+
+
+def login():
+    r = requests.post(f"{API}/auth/login",
+                      json={"username": LOGIN_USER, "password": LOGIN_PWD}, timeout=10)
+    d = r.json()
+    if d.get("code") != 200:
+        raise SystemExit(f"登录失败：{d.get('message')}")
+    return {"Authorization": f"Bearer {d['data']['token']}"}
+
+
+HEADERS = login()
+_DB_PWD = os.getenv("DB_PASSWORD")
+if not _DB_PWD:
+    raise SystemExit("未设置环境变量 DB_PASSWORD；先执行：set -a && source ai-wms/.env.local && set +a")
+
+MYSQL = ["mysql", "-u", os.getenv("DB_USER", "root"), "-p" + _DB_PWD,
          "--default-character-set=utf8mb4", "-N", "-B", "-e"]
 
 
@@ -104,7 +129,8 @@ def run_test(sku_code: str, stock: int, max_orders: int = 1000, workers: int = 1
     def allocate(oid):
         t0 = time.time()
         try:
-            r = requests.post(f"{API}/outbound-orders/{oid}/allocate", timeout=30)
+            r = requests.post(f"{API}/outbound-orders/{oid}/allocate",
+                              headers=HEADERS, timeout=30)
             j = r.json()
             ok = j.get("code") == 200
             msg = j.get("message", "")

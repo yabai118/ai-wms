@@ -33,6 +33,7 @@
 ⚠️ 对照组接口（allocate-naive）是为这个实验专门加的，业务代码不要调用。
 """
 import concurrent.futures
+import os
 import statistics
 import subprocess
 import sys
@@ -42,7 +43,32 @@ import time
 import requests
 
 API = "http://localhost:8080/api"
-MYSQL = ["mysql", "-u", "root", "-p123456",
+
+# ---------- 登录取 token ----------
+# 系统加了鉴权后，直连 8080 的脚本必须先登录，否则一律 401。
+# 用 admin：正式版 /allocate 是拣货员岗、对照组 /allocate-naive 是管理员岗，
+# admin 能同时覆盖两者，保证 A/B 两组除了"接口实现"以外完全一致。
+LOGIN_USER = os.getenv("WMS_DEMO_USER", "admin")
+LOGIN_PWD = os.getenv("WMS_DEMO_PASSWORD")
+if not LOGIN_PWD:
+    raise SystemExit("未设置环境变量 WMS_DEMO_PASSWORD；先执行：set -a && source ai-wms/.env.local && set +a")
+
+
+def login():
+    r = requests.post(f"{API}/auth/login",
+                      json={"username": LOGIN_USER, "password": LOGIN_PWD}, timeout=10)
+    d = r.json()
+    if d.get("code") != 200:
+        raise SystemExit(f"登录失败：{d.get('message')}")
+    return {"Authorization": f"Bearer {d['data']['token']}"}
+
+
+HEADERS = login()
+_DB_PWD = os.getenv("DB_PASSWORD")
+if not _DB_PWD:
+    raise SystemExit("未设置环境变量 DB_PASSWORD；先执行：set -a && source ai-wms/.env.local && set +a")
+
+MYSQL = ["mysql", "-u", os.getenv("DB_USER", "root"), "-p" + _DB_PWD,
          "--default-character-set=utf8mb4", "-N", "-B", "-e"]
 
 SKU = "IYXV3Z-9"          # 沿用正式压测报告里争抢最激烈的那支 SKU
@@ -98,7 +124,8 @@ def run_round(label, path, stock, order_ids, inv_id, workers):
         barrier.wait()
         t0 = time.time()
         try:
-            r = requests.post(f"{API}/outbound-orders/{oid}{path}", timeout=60)
+            r = requests.post(f"{API}/outbound-orders/{oid}{path}",
+                              headers=HEADERS, timeout=60)
             ok = r.json().get("code") == 200
         except Exception:
             ok = False

@@ -41,8 +41,14 @@ import pymysql
 from app.services.routing import PickTask, compare_all, optimal_route, AISLE_YS
 
 # ---------------- 实验参数 ----------------
-DB = dict(host='localhost', user='root', password='123456',
-          database='ai_wms', charset='utf8mb4')
+# 数据库密码从环境变量读——脚本要提交到公开仓库，不能写死密码
+_DB_PWD = os.getenv("DB_PASSWORD")
+if not _DB_PWD:
+    raise SystemExit("未设置环境变量 DB_PASSWORD；先执行：set -a && source ai-wms/.env.local && set +a")
+
+DB = dict(host=os.getenv("DB_HOST", "localhost"), user=os.getenv("DB_USER", "root"),
+          password=_DB_PWD,
+          database=os.getenv("DB_NAME", "ai_wms"), charset='utf8mb4')
 SAMPLE_SIZE = 100          # 抽样波次数
 MIN_TASKS, MAX_TASKS = 3, 25
 OPTIMAL_MAX_TASKS = 22     # 精确求解的「去重后位置数」上限（Held-Karp O(2ⁿ·n²)）
