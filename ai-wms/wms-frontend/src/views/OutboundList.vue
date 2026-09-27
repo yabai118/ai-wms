@@ -2,10 +2,15 @@
   <div>
     <el-card shadow="never">
       <template #header>
-        <div style="display:flex;align-items:center;gap:8px">
-          <el-icon><Upload /></el-icon>
-          <span style="font-weight:600">出库管理</span>
-          <el-tag size="small" type="info" effect="plain">共 {{ total }} 个订单</el-tag>
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:8px">
+            <el-icon><Upload /></el-icon>
+            <span style="font-weight:600">出库管理</span>
+            <el-tag size="small" type="info" effect="plain">共 {{ total }} 个订单</el-tag>
+          </div>
+          <el-button type="primary" size="small" @click="openCreate">
+            <el-icon><Plus /></el-icon> 新建出库单
+          </el-button>
         </div>
       </template>
 
@@ -102,6 +107,65 @@
       </el-table>
     </el-dialog>
 
+    <!-- ============ 新建出库单 ============ -->
+    <el-dialog v-model="createVisible" title="新建出库单" width="760px">
+      <el-form :model="createForm" label-width="90px" size="small">
+        <el-form-item label="客户">
+          <el-select
+            v-model="createForm.customerId"
+            filterable
+            remote
+            :remote-method="searchCustomer"
+            :loading="customerLoading"
+            placeholder="搜索客户（输入编码或名称）"
+            style="width:100%"
+          >
+            <el-option
+              v-for="c in customerOptions"
+              :key="c.id"
+              :label="`${c.custCode}  ${c.custName || ''}`"
+              :value="c.id"
+            />
+          </el-select>
+        </el-form-item>
+
+        <el-divider content-position="left">出库明细</el-divider>
+
+        <div v-for="(line, idx) in createForm.lines" :key="idx"
+             style="display:flex;gap:8px;margin-bottom:8px;align-items:center">
+          <el-select
+            v-model="line.skuId"
+            filterable
+            remote
+            :remote-method="searchSku"
+            :loading="skuLoading"
+            placeholder="搜索 SKU（输入款号，如 8N10W9）"
+            style="flex:1"
+          >
+            <el-option
+              v-for="s in skuOptions"
+              :key="s.id"
+              :label="`${s.skuCode}  (${s.abcClass}类)`"
+              :value="s.id"
+            />
+          </el-select>
+          <el-input-number v-model="line.qty" :min="1" :max="9999" style="width:140px" />
+          <el-button link type="danger" @click="createForm.lines.splice(idx, 1)">
+            <el-icon><Delete /></el-icon>
+          </el-button>
+        </div>
+
+        <el-button size="small" @click="createForm.lines.push({ skuId: null, qty: 1 })">
+          <el-icon><Plus /></el-icon> 添加一行
+        </el-button>
+      </el-form>
+
+      <template #footer>
+        <el-button @click="createVisible = false">取消</el-button>
+        <el-button type="primary" :loading="submitting" @click="submitCreate">创建</el-button>
+      </template>
+    </el-dialog>
+
     <!-- ============ 分配结果弹窗 ============ -->
     <el-dialog v-model="resultVisible" title="库存分配结果" width="620px">
       <el-result icon="success" title="分配成功"
@@ -120,8 +184,11 @@
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { outboundApi, exportOrdersUrl } from '@/api/outbound'
+import { customerApi } from '@/api/customer'
+import { skuApi } from '@/api/sku'
 
 const loading = ref(false)
+const submitting = ref(false)
 const list = ref([])
 const total = ref(0)
 const query = reactive({ pageNum: 1, pageSize: 10, orderNo: '', status: null })
@@ -131,6 +198,14 @@ const detail = ref({})
 
 const resultVisible = ref(false)
 const result = ref({})
+
+// 新建出库单
+const createVisible = ref(false)
+const createForm = reactive({ customerId: null, lines: [] })
+const customerOptions = ref([])
+const customerLoading = ref(false)
+const skuOptions = ref([])
+const skuLoading = ref(false)
 
 function statusTagType(s) {
   return { 0: 'warning', 1: 'primary', 2: 'info', 3: 'success' }[s] || 'info'
@@ -173,6 +248,60 @@ async function doAllocate(row) {
     loadData()
   } catch (e) {
     // 错误提示已由 axios 拦截器处理
+  }
+}
+
+// ---------- 新建出库单 ----------
+function openCreate() {
+  createForm.customerId = null
+  createForm.lines = [{ skuId: null, qty: 1 }]
+  customerOptions.value = []
+  skuOptions.value = []
+  createVisible.value = true
+  searchCustomer('')
+  searchSku('')
+}
+
+async function searchCustomer(keyword) {
+  customerLoading.value = true
+  try {
+    customerOptions.value = await customerApi.search(keyword)
+  } catch (e) {
+    console.error(e)
+  } finally {
+    customerLoading.value = false
+  }
+}
+
+async function searchSku(keyword) {
+  skuLoading.value = true
+  try {
+    skuOptions.value = await skuApi.search(keyword)
+  } catch (e) {
+    console.error(e)
+  } finally {
+    skuLoading.value = false
+  }
+}
+
+async function submitCreate() {
+  if (!createForm.customerId) {
+    ElMessage.warning('请选择客户')
+    return
+  }
+  const lines = createForm.lines.filter(l => l.skuId && l.qty > 0)
+  if (!lines.length) {
+    ElMessage.warning('请至少添加一条有效明细')
+    return
+  }
+  submitting.value = true
+  try {
+    await outboundApi.create({ customerId: createForm.customerId, lines })
+    ElMessage.success('出库单创建成功')
+    createVisible.value = false
+    loadData()
+  } finally {
+    submitting.value = false
   }
 }
 

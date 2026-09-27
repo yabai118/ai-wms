@@ -1,6 +1,8 @@
 package com.aiwms.controller;
 
+import com.aiwms.common.RequireRole;
 import com.aiwms.common.Result;
+import com.aiwms.common.Roles;
 import com.aiwms.dto.*;
 import com.aiwms.service.InboundService;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -43,6 +45,7 @@ public class InboundController {
      * <p>POST /api/inbound-orders
      */
     @PostMapping
+    @RequireRole(Roles.RECEIVER)
     public Result<Long> create(@RequestBody @Valid InboundCreateRequest request) {
         return Result.success("入库单创建成功", inboundService.createOrder(request));
     }
@@ -52,6 +55,7 @@ public class InboundController {
      * <p>POST /api/inbound-orders/{id}/receive
      */
     @PostMapping("/{id}/receive")
+    @RequireRole(Roles.RECEIVER)
     public Result<Void> receive(@PathVariable Long id,
                                 @RequestBody @Valid InboundReceiveRequest request) {
         inboundService.receive(id, request);
@@ -63,6 +67,7 @@ public class InboundController {
      * <p>POST /api/inbound-orders/{id}/shelve
      */
     @PostMapping("/{id}/shelve")
+    @RequireRole(Roles.RECEIVER)
     public Result<Void> shelve(@PathVariable Long id,
                                @RequestBody @Valid InboundShelveRequest request) {
         inboundService.shelve(id, request);

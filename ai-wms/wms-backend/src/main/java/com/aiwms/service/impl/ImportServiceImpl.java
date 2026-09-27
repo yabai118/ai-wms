@@ -1,6 +1,7 @@
 package com.aiwms.service.impl;
 
 import com.aiwms.common.BusinessException;
+import com.aiwms.common.UserContext;
 import com.aiwms.dto.ImportResultVO;
 import com.aiwms.dto.excel.InventoryImportRow;
 import com.aiwms.dto.excel.LocationImportRow;
@@ -299,7 +300,7 @@ public class ImportServiceImpl implements ImportService {
                 tx.setReferenceType("INIT");
                 tx.setReferenceId(0L);
                 tx.setRemark("期初库存导入");
-                tx.setCreatedBy("import");
+                tx.setCreatedBy(UserContext.usernameOr("import"));
                 transactionMapper.insert(tx);
             }
 

@@ -1,6 +1,7 @@
 package com.aiwms.service.impl;
 
 import com.aiwms.common.BusinessException;
+import com.aiwms.common.UserContext;
 import com.aiwms.dto.*;
 import com.aiwms.entity.*;
 import com.aiwms.mapper.*;
@@ -15,6 +16,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -91,6 +94,47 @@ public class OutboundServiceImpl implements OutboundService {
                         .eq(OutboundOrderLine::getOrderId, id)
                         .orderByAsc(OutboundOrderLine::getId));
         return toVO(order, lines, true);
+    }
+
+    // ==================================================================
+    //  创建出库单
+    //
+    //  补上系统原本缺失的能力：此前出库单全部由数据集导入
+    //  （gen_outbound_data.py 直接生成 INSERT），没有创建入口。
+    // ==================================================================
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Long createOrder(OutboundCreateRequest request) {
+        // ① 校验客户与 SKU 存在
+        if (customerMapper.selectById(request.getCustomerId()) == null) {
+            throw new BusinessException("客户不存在: id=" + request.getCustomerId());
+        }
+        for (OutboundCreateRequest.Line l : request.getLines()) {
+            if (skuMapper.selectById(l.getSkuId()) == null) {
+                throw new BusinessException("SKU 不存在: id=" + l.getSkuId());
+            }
+        }
+
+        // ② 建单头
+        OutboundOrder order = new OutboundOrder();
+        order.setOrderNo(generateOrderNo());
+        order.setCustomerId(request.getCustomerId());
+        order.setStatus(0);                             // 待分配
+        order.setOrderTime(LocalDateTime.now());
+        orderMapper.insert(order);
+
+        // ③ 建明细
+        for (OutboundCreateRequest.Line l : request.getLines()) {
+            OutboundOrderLine line = new OutboundOrderLine();
+            line.setOrderId(order.getId());
+            line.setSkuId(l.getSkuId());
+            line.setQty(l.getQty());
+            lineMapper.insert(line);
+        }
+
+        log.info("创建出库单成功: {} ({} 条明细)", order.getOrderNo(), request.getLines().size());
+        return order.getId();
     }
 
     @Override
@@ -177,7 +221,7 @@ public class OutboundServiceImpl implements OutboundService {
                 tx.setReferenceId(orderId);
                 tx.setRemark("订单分配: " + order.getOrderNo() + " / 明细 " + line.getId()
                         + " / 分配 " + alloc + " 件");
-                tx.setCreatedBy("system");
+                tx.setCreatedBy(UserContext.usernameOr("system"));
                 transactionMapper.insert(tx);
 
                 need -= alloc;
@@ -296,6 +340,23 @@ public class OutboundServiceImpl implements OutboundService {
     // ==================================================================
     //  辅助
     // ==================================================================
+
+    /**
+     * 生成出库单号：CK + 日期 + 当日流水号，如 CK20260928-001
+     *
+     * <p>用 {@code CK} 前缀是为了与数据集导入的单号区分开 ——
+     * 导入的单号是纯数字（如 124438），手工创建的一眼可辨。
+     *
+     * <p>⚠️ TODO 已知并发窗口：流水号用「当日已有单数 + 1」算出来，
+     * 高并发下两个请求可能算出同一个号。这与入库单号是同一个问题，
+     * 此处沿用同一模式保持一致，待后续统一修复。
+     */
+    private String generateOrderNo() {
+        String date = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        long count = orderMapper.selectCount(new LambdaQueryWrapper<OutboundOrder>()
+                .likeRight(OutboundOrder::getOrderNo, "CK" + date)) + 1;
+        return String.format("CK%s-%03d", date, count);
+    }
 
     private OutboundOrderVO toVO(OutboundOrder o, List<OutboundOrderLine> lines, boolean withLines) {
         OutboundOrderVO vo = new OutboundOrderVO();

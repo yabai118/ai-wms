@@ -1,6 +1,7 @@
 package com.aiwms.service.impl;
 
 import com.aiwms.common.BusinessException;
+import com.aiwms.common.UserContext;
 import com.aiwms.dto.*;
 import com.aiwms.entity.*;
 import com.aiwms.mapper.*;
@@ -119,7 +120,7 @@ public class InboundServiceImpl implements InboundService {
         order.setStatus(0);                       // 待收货
         order.setExpectedDate(request.getExpectedDate());
         order.setRemark(request.getRemark());
-        order.setCreatedBy("admin");
+        order.setCreatedBy(UserContext.usernameOr("system"));
         orderMapper.insert(order);
 
         for (InboundCreateRequest.Line l : request.getLines()) {
@@ -249,7 +250,7 @@ public class InboundServiceImpl implements InboundService {
             tx.setReferenceType("INBOUND_ORDER");
             tx.setReferenceId(orderId);
             tx.setRemark("入库上架: " + order.getOrderNo() + " / 明细 " + line.getId());
-            tx.setCreatedBy("admin");
+            tx.setCreatedBy(UserContext.usernameOr("system"));
             transactionMapper.insert(tx);
 
             // ⑤ 更新货位占用

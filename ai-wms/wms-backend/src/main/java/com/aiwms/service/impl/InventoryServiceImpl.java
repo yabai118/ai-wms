@@ -1,6 +1,7 @@
 package com.aiwms.service.impl;
 
 import com.aiwms.common.BusinessException;
+import com.aiwms.common.UserContext;
 import com.aiwms.dto.InventoryQuery;
 import com.aiwms.dto.InventoryTransactionVO;
 import com.aiwms.dto.InventoryVO;
@@ -263,7 +264,7 @@ public class InventoryServiceImpl implements InventoryService {
         tx.setReferenceType(refType);
         tx.setReferenceId(refId);
         tx.setRemark(remark);
-        tx.setCreatedBy("admin");
+        tx.setCreatedBy(UserContext.usernameOr("system"));
         transactionMapper.insert(tx);
     }
 

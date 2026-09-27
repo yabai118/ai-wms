@@ -11,11 +11,15 @@ spring:
     name: wms-backend
 
   # ---------- 数据源（MySQL）----------
+  # ⚠️ 密码走环境变量注入，**不写默认值** —— 配置文件要提交到公开仓库，不能带密码。
+  #    未设置时启动直接报 "Could not resolve placeholder 'DB_PASSWORD'"，
+  #    这是刻意的：宁可起不来，也不要悄悄用一个弱密码连上库。
+  #    变量名与 wms-agent 的 .env 保持一致，三个服务共用一份环境变量。
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/ai_wms?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
-    username: root
-    password: 123456
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:ai_wms}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: ${DB_USER:root}
+    password: ${DB_PASSWORD}
     hikari:
       minimum-idle: 5
       maximum-pool-size: 20
@@ -57,6 +61,13 @@ mybatis-plus:
       logic-delete-field: deleted          # 逻辑删除字段（若实体有这个字段）
       logic-delete-value: 1
       logic-not-delete-value: 0
+
+# ---------- JWT（登录鉴权）----------
+# ⚠️ 密钥走环境变量，不提交。必须是 32 字节以上——HS256 的密钥长度下限。
+#    泄露的后果：任何人可以伪造任意角色的 token（包括 admin）。
+jwt:
+  secret: ${JWT_SECRET}
+  expire-hours: 8                             # 一个班次的有效期
 
 # ---------- 日志 ----------
 logging:

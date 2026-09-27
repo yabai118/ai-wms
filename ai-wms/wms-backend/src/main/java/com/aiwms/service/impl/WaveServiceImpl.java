@@ -1,6 +1,7 @@
 package com.aiwms.service.impl;
 
 import com.aiwms.common.BusinessException;
+import com.aiwms.common.UserContext;
 import com.aiwms.dto.*;
 import com.aiwms.entity.*;
 import com.aiwms.mapper.*;
@@ -317,7 +318,7 @@ public class WaveServiceImpl implements WaveService {
             tx.setReferenceId(waveId);
             tx.setRemark("拣货确认: " + wave.getWaveNo() + " / 库位任务 " + task.getId()
                     + " / " + qty + " 件");
-            tx.setCreatedBy("picker");
+            tx.setCreatedBy(UserContext.usernameOr("system"));
             transactionMapper.insert(tx);
         }
 
@@ -363,7 +364,7 @@ public class WaveServiceImpl implements WaveService {
             tx.setReferenceType("PICKING_WAVE");
             tx.setReferenceId(waveId);
             tx.setRemark("发货出库: " + wave.getWaveNo() + " / " + qty + " 件");
-            tx.setCreatedBy("system");
+            tx.setCreatedBy(UserContext.usernameOr("system"));
             transactionMapper.insert(tx);
 
             totalQty += qty;

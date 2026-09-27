@@ -11,6 +11,11 @@ export const outboundApi = {
     return request.get(`/outbound-orders/${id}`)
   },
 
+  /** 创建出库单 */
+  create(data) {
+    return request.post('/outbound-orders', data)
+  },
+
   /** ★ 分配库存 */
   allocate(id) {
     return request.post(`/outbound-orders/${id}/allocate`)

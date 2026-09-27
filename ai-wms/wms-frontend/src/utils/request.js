@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
+import { getToken, clearLogin } from '@/utils/authStorage'
 
 /**
  * axios 封装
@@ -19,9 +20,11 @@ const request = axios.create({
 // ---------- 请求拦截器 ----------
 request.interceptors.request.use(
   (config) => {
-    // 预留：以后可以在这里加 token
-    // const token = localStorage.getItem('token')
-    // if (token) config.headers.Authorization = `Bearer ${token}`
+    // 每个请求自动带上登录凭证；后端 AuthInterceptor 从这里取 token
+    const token = getToken()
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
     return config
   },
   (error) => Promise.reject(error)
@@ -42,16 +45,30 @@ request.interceptors.response.use(
     return Promise.reject(new Error(res.message || '请求失败'))
   },
   (error) => {
-    // 网络层错误
-    let msg = '网络异常，请稍后重试'
+    const status = error.response?.status
+    // 后端在 401/403 时会返回 {code, message}，优先用它的文案
+    const serverMsg = error.response?.data?.message
+
+    // ---- 未登录 / 登录过期：清凭证并回登录页 ----
+    if (status === 401) {
+      ElMessage.error(serverMsg || '登录已过期，请重新登录')
+      clearLogin()
+      // 已经在登录页就别再跳，否则会来回刷
+      if (!window.location.pathname.startsWith('/login')) {
+        // 用整页跳转而不是 router.push：这里不引 router，
+        // 免得形成 router → utils/request → router 的循环依赖
+        window.location.href = '/login'
+      }
+      return Promise.reject(error)
+    }
+
+    let msg = serverMsg || '网络异常，请稍后重试'
     if (error.code === 'ECONNABORTED') {
       msg = '请求超时'
-    } else if (error.response) {
-      const status = error.response.status
+    } else if (error.response && !serverMsg) {
       const map = {
         400: '请求参数错误',
-        401: '未登录或登录已过期',
-        403: '没有权限',
+        403: '没有权限执行该操作',
         404: '请求的资源不存在',
         500: '服务器内部错误'
       }

@@ -2,6 +2,7 @@ package com.aiwms.service;
 
 import com.aiwms.dto.AllocateResultVO;
 import com.aiwms.dto.AllocationVO;
+import com.aiwms.dto.OutboundCreateRequest;
 import com.aiwms.dto.OutboundOrderQuery;
 import com.aiwms.dto.OutboundOrderVO;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -15,6 +16,15 @@ public interface OutboundService {
 
     /** 出库单详情（含明细与分配情况） */
     OutboundOrderVO getOrderDetail(Long id);
+
+    /**
+     * 创建出库单
+     *
+     * <p>补上系统原本缺失的能力——此前出库单只能靠数据集导入，没有创建入口。
+     *
+     * @return 新建出库单的 id
+     */
+    Long createOrder(OutboundCreateRequest request);
 
     /**
      * ★ 分配库存：为订单的每条明细分配具体库位

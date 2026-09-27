@@ -49,7 +49,23 @@
         </div>
         <div class="user-info">
           <el-tag size="small" type="success" effect="plain">开发环境</el-tag>
-          <el-avatar :size="28" style="background:#1f4e79">陈</el-avatar>
+
+          <el-dropdown @command="handleCommand">
+            <span class="user-trigger">
+              <el-avatar :size="28" style="background:#1f4e79">{{ avatarText }}</el-avatar>
+              <span class="user-name">{{ user.displayName || user.username }}</span>
+              <el-tag size="small" type="info" effect="plain">{{ user.roleName }}</el-tag>
+              <el-icon class="user-arrow"><ArrowDown /></el-icon>
+            </span>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item disabled>登录名：{{ user.username }}</el-dropdown-item>
+                <el-dropdown-item command="logout" divided>
+                  <el-icon><SwitchButton /></el-icon> 退出登录
+                </el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
         </div>
       </el-header>
 
@@ -61,10 +77,35 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { ElMessageBox } from 'element-plus'
+import { getUser, clearLogin } from '@/utils/authStorage'
 
 const route = useRoute()
+const router = useRouter()
+
+/** 当前登录用户（登录后整页/路由跳转进来，此时 localStorage 已写好） */
+const user = ref(getUser())
+
+/** 头像里的首字：优先显示名，没有就取登录名 */
+const avatarText = computed(() => {
+  const name = user.value.displayName || user.value.username || '?'
+  return name.charAt(0)
+})
+
+async function handleCommand(command) {
+  if (command !== 'logout') return
+  try {
+    await ElMessageBox.confirm('确认退出登录？', '退出', { type: 'warning' })
+  } catch {
+    return   // 用户点了取消
+  }
+  // 轻量版登出只清前端凭证；token 本身在过期前仍有效，
+  // 真要做「服务端立即失效」得加黑名单（Redis 已就绪，后续可做）
+  clearLogin()
+  router.replace('/login')
+}
 
 /** 菜单配置（后续新页面往这里加） */
 const menus = [
@@ -137,6 +178,24 @@ const currentTitle = computed(() => route.meta?.title || 'AI-WMS')
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.user-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  outline: none;
+}
+
+.user-name {
+  font-size: 14px;
+  color: #303133;
+}
+
+.user-arrow {
+  color: #909399;
+  font-size: 12px;
 }
 
 /* ---------- 内容区 ---------- */

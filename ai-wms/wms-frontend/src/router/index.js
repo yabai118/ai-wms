@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Layout from '@/layout/index.vue'
+import { getToken } from '@/utils/authStorage'
 
 /**
  * 路由配置
@@ -8,6 +9,13 @@ import Layout from '@/layout/index.vue'
  * Layout 包含侧边栏和顶栏，子页面渲染在右侧内容区
  */
 const routes = [
+  // 登录页是**顶层路由**，不能挂在 Layout 下——它没有侧边栏和顶栏
+  {
+    path: '/login',
+    name: 'Login',
+    component: () => import('@/views/Login.vue'),
+    meta: { title: '登录', public: true }
+  },
   {
     path: '/',
     component: Layout,
@@ -86,6 +94,30 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes
+})
+
+/**
+ * 全局前置守卫：没登录的一律赶去登录页
+ *
+ * <p>注意这只是**体验层**的拦截——真正的权限控制在后端。
+ * 前端守卫能被绕过（改 localStorage 或直接调接口），
+ * 所以两边都要有：这里管"别让用户看到进不去的页面"，
+ * 后端 AuthInterceptor 管"真的不让你干"。
+ */
+router.beforeEach((to) => {
+  const token = getToken()
+
+  if (!token && !to.meta?.public) {
+    // 记住原本要去哪，登录后可以跳回去
+    return { path: '/login', query: to.fullPath === '/' ? {} : { redirect: to.fullPath } }
+  }
+
+  // 已经登录了还去登录页 → 送回首页
+  if (token && to.path === '/login') {
+    return { path: '/dashboard' }
+  }
+
+  return true
 })
 
 export default router

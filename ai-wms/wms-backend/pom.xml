@@ -23,6 +23,8 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <!-- MyBatis-Plus：注意 Spring Boot 3 要用 spring-boot3-starter 这个 artifact -->
         <mybatis-plus.version>3.5.7</mybatis-plus.version>
+        <!-- JWT 库版本（Spring Boot 父工程不管理它） -->
+        <jjwt.version>0.12.6</jjwt.version>
     </properties>
 
     <dependencies>
@@ -71,6 +73,35 @@
             <groupId>com.alibaba</groupId>
             <artifactId>easyexcel</artifactId>
             <version>3.3.4</version>
+        </dependency>
+
+        <!-- ========== 登录鉴权 ========== -->
+        <!-- JWT：Spring Boot 3.2.5 的 dependencyManagement 不含 jjwt，必须自己指定版本。
+             用 0.12.x 三件套写法——0.11.x 在 Spring Boot 3 下要额外引 javax.xml.bind，不推荐。 -->
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-api</artifactId>
+            <version>${jjwt.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-impl</artifactId>
+            <version>${jjwt.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-jackson</artifactId>
+            <version>${jjwt.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+        <!-- BCrypt 密码哈希。只引 crypto 这一个模块，**不含** servlet 过滤器链，
+             所以不会像 spring-boot-starter-security 那样自动接管所有请求。
+             选用它是为了将来升级到标准版（Spring Security + RBAC）时，
+             同一套密码哈希能平滑迁移，不用让所有人重设密码。 -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-crypto</artifactId>
         </dependency>
 
         <!-- ========== Lombok（简化实体类 getter/setter）========== -->

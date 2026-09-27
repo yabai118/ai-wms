@@ -9,7 +9,30 @@ echo.
 
 cd /d "%~dp0"
 
+REM ---------- 加载本地环境变量 ----------
+REM  数据库密码、JWT 密钥都放在 .env.local 里（已被 gitignore，不会提交）。
+REM  三个服务（后端 / Agent / 前端）共用这一份。
+echo [0/5] 加载本地环境变量...
+if not exist ".env.local" (
+    echo   [X] 缺少 .env.local
+    echo       请从 .env.example 复制一份并填入数据库密码与 JWT 密钥：
+    echo         copy .env.example .env.local
+    goto :error
+)
+REM  eol=# 让 # 开头的行当注释跳过；空行 for /f 默认跳过
+for /f "usebackq eol=# tokens=1,* delims==" %%a in (".env.local") do set "%%a=%%b"
+if "%DB_PASSWORD%"=="" (
+    echo   [X] .env.local 里 DB_PASSWORD 为空
+    goto :error
+)
+if "%JWT_SECRET%"=="" (
+    echo   [X] .env.local 里 JWT_SECRET 为空
+    goto :error
+)
+echo   [OK] 已加载 .env.local
+
 REM ---------- 检查前置服务 ----------
+echo.
 echo [1/5] 检查前置服务...
 
 netstat -an | findstr ":3306 " | findstr LISTENING >nul
