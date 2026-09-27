@@ -148,6 +148,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { userApi } from '@/api/user'
 import { roleApi } from '@/api/role'
+import { staffApi } from '@/api/staff'
 
 const loading = ref(false)
 const submitting = ref(false)
@@ -195,8 +196,8 @@ async function openCreate() {
   createForm.password = ''
   createForm.role = null
   createVisible.value = true
-  // 每次都重取：员工可能在别处被关联了
-  staffList.value = await userApi.staff()
+  // 每次都重取：员工可能刚在「员工管理」里被加了、或者已被别人开了账号
+  staffList.value = await staffApi.options()
 }
 
 async function submitCreate() {

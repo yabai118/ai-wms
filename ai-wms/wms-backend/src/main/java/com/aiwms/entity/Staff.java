@@ -41,5 +41,17 @@ public class Staff {
     /** 姓名 —— 同时是显示名 */
     private String staffName;
 
+    /**
+     * 0离职 1在职
+     *
+     * <p><b>为什么不删离职的人</b>：单据引用了他
+     * （{@code picking_wave.staff_id}、{@code inventory_transaction.created_by}），
+     * 删了审计链就断。用状态表达，历史记录永远查得到"这批货是谁拣的"。
+     *
+     * <p>离职时如果有账号，账号会一并停用（见 {@code StaffServiceImpl.updateStatus}）——
+     * 这两件事在业务上是一次操作，不该让人分两步做、还可能漏掉一步。
+     */
+    private Integer status;
+
     private LocalDateTime createdAt;
 }

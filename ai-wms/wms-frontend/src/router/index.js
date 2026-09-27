@@ -92,6 +92,13 @@ const routes = [
         meta: { title: '智能助手', icon: 'MagicStick' }
       },
       // ---------- 系统管理（需要相应权限点才可见/可进）----------
+      // 员工 → 账号 → 角色，按「人 → 登录 → 权限」的顺序排
+      {
+        path: 'staff',
+        name: 'Staff',
+        component: () => import('@/views/StaffList.vue'),
+        meta: { title: '员工管理', icon: 'Avatar', perm: 'user:manage' }
+      },
       {
         path: 'user',
         name: 'User',

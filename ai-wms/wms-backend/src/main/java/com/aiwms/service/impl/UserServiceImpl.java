@@ -47,6 +47,8 @@ public class UserServiceImpl implements UserService {
     private final TokenRevocationService tokenRevocationService;
 
     private static final int STATUS_ENABLED = 1;
+    /** 员工在职状态（staff.status）*/
+    private static final int STAFF_ACTIVE = 1;
 
     @Override
     public IPage<SysUserVO> pageUsers(SysUserQuery query) {
@@ -100,6 +102,11 @@ public class UserServiceImpl implements UserService {
         Staff staff = staffMapper.selectById(request.getStaffId());
         if (staff == null) {
             throw new BusinessException("员工不存在: id=" + request.getStaffId());
+        }
+        // ★ 离职的人不能再开账号 —— 前端下拉已经过滤掉了，这里是防绕过
+        if (staff.getStatus() == null || staff.getStatus() != STAFF_ACTIVE) {
+            throw new BusinessException("员工「" + staff.getStaffCode() + " "
+                    + staff.getStaffName() + "」已离职，不能开账号");
         }
 
         // ★ 一对一：一个员工只能有一个账号
@@ -178,25 +185,6 @@ public class UserServiceImpl implements UserService {
         revoke(user);
 
         log.info("管理员重置了账号 {} 的密码，旧令牌已撤销", staffCodeOf(user));
-    }
-
-    @Override
-    public List<StaffOptionVO> listStaff() {
-        // 已经被占用的员工（一对一，前端应当禁用这些选项）
-        Set<Long> linked = sysUserMapper.selectList(null).stream()
-                .map(SysUser::getStaffId).filter(Objects::nonNull)
-                .collect(Collectors.toSet());
-
-        return staffMapper.selectList(
-                        new LambdaQueryWrapper<Staff>().orderByAsc(Staff::getId))
-                .stream().map(s -> {
-                    StaffOptionVO vo = new StaffOptionVO();
-                    vo.setId(s.getId());
-                    vo.setStaffCode(s.getStaffCode());
-                    vo.setStaffName(s.getStaffName());
-                    vo.setLinked(linked.contains(s.getId()));
-                    return vo;
-                }).toList();
     }
 
     // ==================================================================

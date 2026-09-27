@@ -4,7 +4,6 @@ import com.aiwms.common.Permissions;
 import com.aiwms.common.RequirePermission;
 import com.aiwms.common.Result;
 import com.aiwms.dto.ResetPasswordRequest;
-import com.aiwms.dto.StaffOptionVO;
 import com.aiwms.dto.SysUserCreateRequest;
 import com.aiwms.dto.SysUserQuery;
 import com.aiwms.dto.SysUserVO;
@@ -76,16 +75,6 @@ public class UserController {
         return Result.success("密码已重置，该账号的登录状态已失效", null);
     }
 
-    /**
-     * 员工下拉
-     * <p>GET /api/users/staff
-     *
-     * <p>新建账号时选「这个账号对应哪个员工」——
-     * 选中之后，登录名就是这个员工的工号，显示名就是他的姓名。
-     */
-    @GetMapping("/staff")
-    @RequirePermission(Permissions.USER_MANAGE)
-    public Result<List<StaffOptionVO>> staff() {
-        return Result.success(userService.listStaff());
-    }
+    // 员工下拉搬到了 StaffController（GET /api/staffs/options）——
+    // 员工档案归员工管理，账号管理只负责「选一个已存在且在职的人」
 }

@@ -106,6 +106,7 @@ CREATE TABLE `staff` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `staff_code` varchar(32) COLLATE utf8mb4_general_ci NOT NULL COMMENT '工号（同时是登录名）',
   `staff_name` varchar(64) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '姓名（顶栏显示用）',
+  `status` tinyint NOT NULL DEFAULT '1' COMMENT '0离职 1在职',
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_op_code` (`staff_code`)

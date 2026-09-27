@@ -1,13 +1,10 @@
 package com.aiwms.service;
 
 import com.aiwms.dto.ResetPasswordRequest;
-import com.aiwms.dto.StaffOptionVO;
 import com.aiwms.dto.SysUserCreateRequest;
 import com.aiwms.dto.SysUserQuery;
 import com.aiwms.dto.SysUserVO;
 import com.baomidou.mybatisplus.core.metadata.IPage;
-
-import java.util.List;
 
 /**
  * 账号管理
@@ -41,7 +38,4 @@ public interface UserService {
      * <p>被重置的人此前签发的令牌会立即失效（否则重置密码拦不住已经登录的人）。
      */
     void resetPassword(Long id, ResetPasswordRequest request);
-
-    /** 员工下拉（供新建账号时选择"这个账号对应哪个员工"） */
-    List<StaffOptionVO> listStaff();
 }
